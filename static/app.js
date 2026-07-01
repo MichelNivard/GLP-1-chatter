@@ -81,15 +81,23 @@ function renderScatter(data) {
   const svg = document.getElementById("scatterplot");
   const status = document.getElementById("plot-status");
   const points = data.points || [];
-  const rctRows = data.rct?.rows || [];
+  const rctSeries = data.rct?.series?.length
+    ? data.rct.series
+    : (data.rct?.rows?.length ? [{ label: "RCT", rows: data.rct.rows }] : []);
+  const rctPalette = [
+    { line: "#5a9ed6", band: "rgba(90, 158, 214, 0.14)" },
+    { line: "#6fba7d", band: "rgba(111, 186, 125, 0.14)" },
+    { line: "#d88a4a", band: "rgba(216, 138, 74, 0.14)" },
+    { line: "#9c77c7", band: "rgba(156, 119, 199, 0.14)" },
+  ];
   svg.innerHTML = "";
 
-  if (!points.length) {
+  if (!points.length && !rctSeries.length) {
     status.textContent = "No plottable reports yet.";
     svg.setAttribute("viewBox", "0 0 900 520");
     return;
   }
-  status.textContent = "";
+  status.textContent = points.length ? "" : "No plottable Reddit reports yet; showing trial overlay.";
 
   const width = 920;
   const height = 560;
@@ -102,9 +110,11 @@ function renderScatter(data) {
     xValues.push(Number(point.weeks));
     yValues.push(Number(point.weight_change_kg));
   });
-  rctRows.forEach((point) => {
-    xValues.push(Number(point.weeks));
-    yValues.push(Number(point.lower), Number(point.upper), Number(point.mean));
+  rctSeries.forEach((series) => {
+    (series.rows || []).forEach((point) => {
+      xValues.push(Number(point.weeks));
+      yValues.push(Number(point.lower), Number(point.upper), Number(point.mean));
+    });
   });
   const [xMin, xMax] = extent(xValues, 0.04);
   const [yMin, yMax] = extent(yValues, 0.12);
@@ -134,12 +144,15 @@ function renderScatter(data) {
   const yLabel = el("text", { x: 18, y: margin.top + plotH / 2, "text-anchor": "middle", class: "axis-label", transform: `rotate(-90 18 ${margin.top + plotH / 2})` }, "Weight change (kg)");
   svg.appendChild(yLabel);
 
-  if (rctRows.length >= 2) {
-    const upper = rctRows.map((point) => `${xScale(point.weeks).toFixed(2)},${yScale(point.upper).toFixed(2)}`).join(" ");
-    const lower = [...rctRows].reverse().map((point) => `${xScale(point.weeks).toFixed(2)},${yScale(point.lower).toFixed(2)}`).join(" ");
-    svg.appendChild(el("polygon", { points: `${upper} ${lower}`, class: "rct-band" }));
-    svg.appendChild(el("path", { d: pathFrom(rctRows, xScale, yScale, "weeks", "mean"), class: "rct-line" }));
-  }
+  rctSeries.forEach((series, index) => {
+    const rows = series.rows || [];
+    if (rows.length < 2) return;
+    const colors = rctPalette[index % rctPalette.length];
+    const upper = rows.map((point) => `${xScale(point.weeks).toFixed(2)},${yScale(point.upper).toFixed(2)}`).join(" ");
+    const lower = [...rows].reverse().map((point) => `${xScale(point.weeks).toFixed(2)},${yScale(point.lower).toFixed(2)}`).join(" ");
+    svg.appendChild(el("polygon", { points: `${upper} ${lower}`, class: "rct-band", style: `fill:${colors.band}` }));
+    svg.appendChild(el("path", { d: pathFrom(rows, xScale, yScale, "weeks", "mean"), class: "rct-line", style: `stroke:${colors.line}` }));
+  });
 
   if (data.curve?.length >= 2) {
     svg.appendChild(el("path", { d: pathFrom(data.curve, xScale, yScale, "weeks", "weight_change_kg"), class: "fit-line" }));
@@ -165,10 +178,14 @@ function renderScatter(data) {
   legend.appendChild(el("text", { x: width - 232, y: 38 }, "Reddit reports"));
   legend.appendChild(el("line", { x1: width - 245, x2: width - 222, y1: 58, y2: 58, class: "fit-line" }));
   legend.appendChild(el("text", { x: width - 214, y: 62 }, "Reddit smoothed fit"));
-  if (rctRows.length >= 2) {
-    legend.appendChild(el("line", { x1: width - 245, x2: width - 222, y1: 82, y2: 82, class: "rct-line" }));
-    legend.appendChild(el("text", { x: width - 214, y: 86 }, "RCT mean +/- 1.96 SD"));
-  }
+  rctSeries.forEach((series, index) => {
+    const rows = series.rows || [];
+    if (rows.length < 2) return;
+    const y = 82 + index * 24;
+    const colors = rctPalette[index % rctPalette.length];
+    legend.appendChild(el("line", { x1: width - 245, x2: width - 222, y1: y, y2: y, class: "rct-line", style: `stroke:${colors.line}` }));
+    legend.appendChild(el("text", { x: width - 214, y: y + 4 }, `${series.label} RCT mean +/- 1.96 SD`));
+  });
   svg.appendChild(legend);
 }
 

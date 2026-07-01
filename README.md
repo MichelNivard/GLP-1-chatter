@@ -153,7 +153,19 @@ weeks,loss_kg,sd_loss_kg
 24,15.4,6.0
 ```
 
-`loss_kg` is interpreted as weight-loss magnitude. The site plots it as negative weight change: `-abs(loss_kg)`. The ribbon is mean plus/minus `1.96 * sd_loss_kg`. Trial overlays are external uploaded aggregate data and are not used in Reddit fitted curves.
+Optional `dose` or `arm` columns create separate trial overlay curves:
+
+```csv
+dose,weeks,loss_kg,sd_loss_kg
+5 mg,0,0,0
+5 mg,72,16.46,10.01
+10 mg,0,0,0
+10 mg,72,22.65,10.35
+```
+
+`loss_kg` is interpreted as weight-loss magnitude. The site plots it as negative weight change: `-abs(loss_kg)`. The ribbon is mean plus/minus `1.96 * sd_loss_kg`. Extra audit columns such as `n`, `percent_change`, `se_percent`, `baseline_weight_kg`, `body_weight_kg`, `se_kg`, `pixel_y_mean`, `pixel_y_top`, `pixel_y_bottom`, `source`, `source_url`, `method`, and `n_assumption` are allowed. Trial overlays are external uploaded aggregate data and are not used in Reddit fitted curves.
+
+Included retatrutide overlay data in `trial-data/trial-reta.csv` were digitized from the body-weight figure in Jastreboff et al., "Triple-Hormone-Receptor Agonist Retatrutide for Obesity - A Phase 2 Trial", New England Journal of Medicine, DOI [`10.1056/NEJMoa2301972`](https://www.nejm.org/doi/full/10.1056/NEJMoa2301972). Placebo is excluded. Because sample sizes were not visible in the figure, `n` uses an explicit assumption of 300 randomized participants allocated 2:1:1:1:1:2:2 across the six retatrutide arms and placebo.
 
 ## Side-Effect Normalization
 

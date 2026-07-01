@@ -1,0 +1,13 @@
+dose,weeks,loss_kg,sd_loss_kg,n,baseline_weight_kg,body_weight_kg,se_kg,pixel_y_mean,pixel_y_top,pixel_y_bottom,source,method
+2.4 mg,0,0.0000,23.1520,1306,105.4374,105.4374,0.6406,339.5,316.0,363.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,4,2.3036,22.5202,1290,105.4374,103.1338,0.6270,424.0,401.0,447.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,8,4.2119,22.4415,1281,105.4374,101.2255,0.6270,494.0,471.0,517.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,12,6.1747,22.2744,1262,105.4374,99.2627,0.6270,566.0,543.0,589.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,16,8.0285,22.1860,1252,105.4374,97.4089,0.6270,634.0,611.0,657.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,20,9.8005,22.1505,1248,105.4374,95.6369,0.6270,699.0,676.0,722.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,28,12.1859,22.4865,1232,105.4374,93.2515,0.6406,786.5,763.0,810.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,36,13.9988,22.9277,1228,105.4374,91.4387,0.6543,853.0,829.0,877.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,44,15.4027,23.2043,1207,105.4374,90.0347,0.6679,904.5,880.0,929.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,52,16.3978,22.6931,1203,105.4374,89.0397,0.6543,941.0,917.0,965.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,60,16.8476,22.0999,1190,105.4374,88.5898,0.6406,957.5,934.0,981.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels
+2.4 mg,68,16.4523,23.7269,1212,105.4374,88.9851,0.6815,943.0,918.0,968.0,STEP 1 Figure S4,digitized from axis-calibrated figure pixels

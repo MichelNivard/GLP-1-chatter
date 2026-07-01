@@ -206,7 +206,7 @@ def load_trial_overlay(family: str) -> dict[str, Any] | None:
     path = ROOT / "trial-data" / f"trial-{family}.csv"
     if not path.exists():
         return None
-    rows: list[dict[str, float]] = []
+    series_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         required = {"weeks", "loss_kg", "sd_loss_kg"}
@@ -214,25 +214,55 @@ def load_trial_overlay(family: str) -> dict[str, Any] | None:
         if missing:
             raise ValueError(f"{path} missing columns: {', '.join(sorted(missing))}")
         for row in reader:
+            dose = (row.get("dose") or row.get("arm") or "Trial").strip() or "Trial"
             weeks = float(row["weeks"])
             loss_kg = float(row["loss_kg"])
             sd_loss_kg = float(row["sd_loss_kg"])
             mean = -abs(loss_kg)
-            rows.append(
-                {
-                    "weeks": weeks,
-                    "mean": mean,
-                    "lower": mean - 1.96 * sd_loss_kg,
-                    "upper": mean + 1.96 * sd_loss_kg,
-                    "loss_kg": loss_kg,
-                    "sd_loss_kg": sd_loss_kg,
-                }
-            )
-    rows.sort(key=lambda item: item["weeks"])
+            point: dict[str, Any] = {
+                "dose": dose,
+                "weeks": weeks,
+                "mean": mean,
+                "lower": mean - 1.96 * sd_loss_kg,
+                "upper": mean + 1.96 * sd_loss_kg,
+                "loss_kg": loss_kg,
+                "sd_loss_kg": sd_loss_kg,
+            }
+            for optional in (
+                "n",
+                "percent_change",
+                "se_percent",
+                "baseline_weight_kg",
+                "body_weight_kg",
+                "se_kg",
+                "pixel_y_mean",
+                "pixel_y_top",
+                "pixel_y_bottom",
+                "source",
+                "source_url",
+                "method",
+                "n_assumption",
+            ):
+                value = (row.get(optional) or "").strip()
+                if not value:
+                    continue
+                if optional in {"source", "source_url", "method", "n_assumption"}:
+                    point[optional] = value
+                else:
+                    point[optional] = float(value)
+            series_rows[dose].append(point)
+    series: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+    for label, label_rows in series_rows.items():
+        label_rows.sort(key=lambda item: item["weeks"])
+        rows.extend(label_rows)
+        series.append({"label": label, "rows": label_rows})
+    rows.sort(key=lambda item: (str(item.get("dose") or ""), item["weeks"]))
     return {
         "present": True,
         "source_file": f"trial-data/trial-{family}.csv",
         "note": "Trial overlay is external uploaded aggregate data, not mined Reddit data.",
+        "series": series,
         "rows": rows,
     }
 
