@@ -1,0 +1,24 @@
+{
+  "default_source": "pullpush",
+  "request_delay_seconds": 1.5,
+  "reddit_user_agent": "glp1-reddit-user-report-miner/0.1 (github-pages static research project)",
+  "subreddits": [
+    "Retatrutide",
+    "RetatrutideTrial",
+    "Peptides",
+    "Semaglutide",
+    "SemaglutideFreeSpeech",
+    "Ozempic",
+    "OzempicForWeightLoss",
+    "WegovyWeightLoss",
+    "WegovyUK",
+    "Mounjaro",
+    "MounjaroMaintenance",
+    "MounjaroUK",
+    "Zepbound",
+    "tirzepatidecompound",
+    "compoundedtirzepatide",
+    "GLP1",
+    "GLP1_BeforeAfter"
+  ]
+}

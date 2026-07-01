@@ -1,0 +1,62 @@
+name: Crawl Reddit candidates
+
+on:
+  schedule:
+    - cron: "18 3 * * *"
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: "Recent crawl window in days"
+        required: false
+        default: "7"
+      limit:
+        description: "Maximum candidates to store, 0 means no explicit limit"
+        required: false
+        default: "0"
+      seed_historical:
+        description: "Run one-time historical seed instead of recent crawl"
+        required: false
+        default: "false"
+        type: boolean
+      pages:
+        description: "Pages per subreddit/term/source type"
+        required: false
+        default: "1"
+
+permissions:
+  contents: write
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Initialize database
+        run: python scripts/init_db.py
+      - name: Crawl recent Reddit candidates
+        run: |
+          args=(
+            --source auto
+            --limit "${{ github.event.inputs.limit || '0' }}"
+            --pages "${{ github.event.inputs.pages || '1' }}"
+          )
+          if [ "${{ github.event.inputs.seed_historical || 'false' }}" = "true" ]; then
+            args+=(--seed-historical)
+          else
+            args+=(--since-days "${{ github.event.inputs.since_days || '7' }}")
+          fi
+          python scripts/crawl_reddit.py "${args[@]}"
+      - name: Commit crawl updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/glp1_reports.sqlite3
+          if git diff --cached --quiet; then
+            echo "No database changes to commit."
+          else
+            git commit -m "Update Reddit crawl database"
+            git push
+          fi

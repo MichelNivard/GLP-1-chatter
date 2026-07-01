@@ -1,0 +1,424 @@
+:root {
+  --ink: #1f2428;
+  --muted: #64707d;
+  --line: #d8dee4;
+  --paper: #fbfbf8;
+  --panel: #ffffff;
+  --green: #1f8a70;
+  --blue: #2f6fbb;
+  --orange: #c56535;
+  --red: #c64d4d;
+  --trial: #7bb7e5;
+  --shadow: 0 14px 32px rgba(31, 36, 40, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+}
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 1180px;
+  min-height: 58px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.nav a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.nav a:hover {
+  color: var(--ink);
+}
+
+.brand {
+  margin-right: auto;
+  color: var(--ink) !important;
+  font-weight: 700;
+}
+
+.home,
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.intro-band,
+.page-heading,
+.link-band,
+.table-section {
+  padding: 1.5rem 0;
+}
+
+.intro-copy {
+  max-width: 820px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 900px;
+  font-size: clamp(2rem, 4vw, 4.6rem);
+  line-height: 1.02;
+  letter-spacing: 0;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+  letter-spacing: 0;
+}
+
+p {
+  color: var(--muted);
+}
+
+.meta,
+.note,
+.eyebrow {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.eyebrow,
+.card-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.summary-card {
+  display: grid;
+  gap: 0.4rem;
+  min-height: 300px;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.summary-card strong {
+  font-size: 3.2rem;
+  line-height: 1;
+}
+
+.summary-card dl,
+.detail-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.summary-card dl div,
+.detail-list div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.55fr) 1fr;
+  gap: 0.75rem;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+}
+
+.family-reta {
+  border-top: 4px solid var(--green);
+}
+
+.family-tirz {
+  border-top: 4px solid var(--blue);
+}
+
+.family-sema {
+  border-top: 4px solid var(--orange);
+}
+
+.page-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.page-links li {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.plot-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.plot-area,
+.detail-panel,
+.effects-layout > div,
+.table-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.plot-area {
+  min-height: 580px;
+  padding: 0.75rem;
+}
+
+.scatterplot {
+  display: block;
+  width: 100%;
+  min-height: 520px;
+}
+
+.status {
+  color: var(--muted);
+  padding: 1rem;
+}
+
+.detail-panel {
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  padding: 1rem;
+  position: sticky;
+  top: 78px;
+}
+
+.detail-panel pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  background: #f4f6f8;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.reddit-link {
+  display: inline-flex;
+  margin: 1rem 0;
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.plot-bg {
+  fill: #fff;
+}
+
+.grid {
+  stroke: #e8ebef;
+  stroke-width: 1;
+}
+
+.zero-line {
+  stroke: #9aa4af;
+  stroke-dasharray: 5 5;
+}
+
+.tick,
+.axis-label,
+.legend text {
+  fill: var(--muted);
+  font-size: 13px;
+}
+
+.axis-label {
+  font-weight: 700;
+}
+
+.point {
+  stroke: #fff;
+  stroke-width: 1.5;
+  cursor: pointer;
+  opacity: 0.86;
+}
+
+.point:hover,
+.point:focus {
+  opacity: 1;
+  stroke: var(--ink);
+  outline: none;
+}
+
+.point-reta {
+  fill: var(--green);
+}
+
+.point-tirz {
+  fill: var(--blue);
+}
+
+.point-sema {
+  fill: var(--orange);
+}
+
+.fit-line {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.rct-band {
+  fill: rgba(123, 183, 229, 0.22);
+  stroke: none;
+}
+
+.rct-line {
+  fill: none;
+  stroke: var(--trial);
+  stroke-width: 3;
+}
+
+.effects-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: 1rem;
+}
+
+.effects-layout > div,
+.table-section {
+  padding: 1rem;
+}
+
+.effect-bars {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.45fr) 1fr 42px;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #edf0f3;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+}
+
+.effect-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.8rem;
+  align-items: center;
+}
+
+.effect-cloud span {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 0.7rem 0.5rem;
+}
+
+th {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 940px) {
+  .summary-grid,
+  .plot-layout,
+  .effects-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-panel {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .nav {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+  }
+
+  .brand {
+    flex-basis: 100%;
+  }
+
+  .home,
+  .page {
+    padding: 1rem 1rem 3rem;
+  }
+
+  h1 {
+    font-size: 2.15rem;
+  }
+
+  .summary-card dl div,
+  .detail-list div,
+  .bar-row {
+    grid-template-columns: 1fr;
+  }
+}
