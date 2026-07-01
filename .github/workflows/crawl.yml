@@ -66,6 +66,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: glp1-db-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   crawl:
     if: ${{ github.event_name != 'push' }}
@@ -118,5 +122,19 @@ jobs:
             echo "No database changes to commit."
           else
             git commit -m "Update Reddit crawl database"
-            git push
+            branch="${GITHUB_REF_NAME:-master}"
+            pushed=false
+            for attempt in 1 2 3; do
+              git pull --rebase origin "$branch"
+              if git push; then
+                pushed=true
+                break
+              fi
+              echo "Push failed on attempt $attempt; retrying after rebase."
+              sleep $((attempt * 10))
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "Failed to push crawl database update after retries." >&2
+              exit 1
+            fi
           fi
