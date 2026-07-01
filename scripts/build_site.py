@@ -8,6 +8,7 @@ import csv
 import html
 import json
 import math
+import re
 import shutil
 import statistics
 from collections import Counter, defaultdict
@@ -32,6 +33,8 @@ FAMILY_NAMES = {
     "tirz": "Tirzepatide",
     "sema": "Semaglutide",
 }
+
+DOSE_MG_RE = re.compile(r"(\d+(?:\.\d+)?)\s*mg\b", re.IGNORECASE)
 
 
 def parse_args() -> argparse.Namespace:
@@ -202,6 +205,31 @@ def smoothed_curve(points: list[dict[str, Any]]) -> list[dict[str, float]]:
     return smoothed
 
 
+def parse_primary_dose_mg(label: str) -> float | None:
+    match = DOSE_MG_RE.search(label)
+    if not match:
+        return None
+    return float(match.group(1))
+
+
+def keep_highest_dose_series(
+    series_rows: dict[str, list[dict[str, Any]]],
+) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
+    if len(series_rows) <= 1:
+        return series_rows, []
+    dose_values = {label: parse_primary_dose_mg(label) for label in series_rows}
+    if any(value is None for value in dose_values.values()):
+        return series_rows, []
+    max_dose = max(value for value in dose_values.values() if value is not None)
+    kept = {
+        label: rows
+        for label, rows in series_rows.items()
+        if dose_values[label] == max_dose
+    }
+    dropped = [label for label in series_rows if label not in kept]
+    return kept, dropped
+
+
 def load_trial_overlay(family: str) -> dict[str, Any] | None:
     path = ROOT / "trial-data" / f"trial-{family}.csv"
     if not path.exists():
@@ -254,6 +282,7 @@ def load_trial_overlay(family: str) -> dict[str, Any] | None:
                 else:
                     point[optional] = float(value)
             series_rows[dose].append(point)
+    series_rows, dropped_series = keep_highest_dose_series(series_rows)
     series: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
     for label, label_rows in series_rows.items():
@@ -267,6 +296,10 @@ def load_trial_overlay(family: str) -> dict[str, Any] | None:
         "note": "Trial overlay is external uploaded aggregate data, not mined Reddit data.",
         "series": series,
         "rows": rows,
+        "dose_filter": {
+            "mode": "highest_mg_only" if dropped_series else "none",
+            "dropped_series": dropped_series,
+        },
     }
 
 

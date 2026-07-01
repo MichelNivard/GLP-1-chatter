@@ -153,7 +153,7 @@ weeks,loss_kg,sd_loss_kg
 24,15.4,6.0
 ```
 
-Optional `dose` or `arm` columns create separate trial overlay curves:
+Optional `dose` or `arm` columns identify trial arms. To keep overlays readable, if a trial CSV has multiple arms with parseable `mg` labels, the site plots only the highest-dose arm and leaves the full source CSV unchanged:
 
 ```csv
 dose,weeks,loss_kg,sd_loss_kg
