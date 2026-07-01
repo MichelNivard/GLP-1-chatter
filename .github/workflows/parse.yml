@@ -1,6 +1,10 @@
 name: Parse Reddit candidates
 
 on:
+  push:
+    branches: [master, main]
+    paths:
+      - ".github/workflows/parse.yml"
   workflow_run:
     workflows: ["Crawl Reddit candidates"]
     types: [completed]
@@ -18,7 +22,7 @@ permissions:
 
 jobs:
   parse:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name != 'push' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
