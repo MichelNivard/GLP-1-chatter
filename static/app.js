@@ -54,6 +54,9 @@ function renderDetail(point) {
   detail.innerHTML = `
     <h2>${htmlEscape(point.drug_name_mentioned || point.drug_family)}</h2>
     ${drift}
+    <h3>Original text</h3>
+    <pre>${htmlEscape(point.processed_full_text || point.full_text || "")}</pre>
+    <a class="reddit-link" href="${htmlEscape(point.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
     <dl class="detail-list">
       <div><dt>Post date</dt><dd>${htmlEscape(point.created_iso || "n/a")}</dd></div>
       <div><dt>Subreddit</dt><dd>r/${htmlEscape(point.subreddit)}</dd></div>
@@ -71,9 +74,6 @@ function renderDetail(point) {
       <div><dt>Evidence</dt><dd>${htmlEscape(point.evidence || "n/a")}</dd></div>
       <div><dt>Notes</dt><dd>${htmlEscape(point.notes || "n/a")}</dd></div>
     </dl>
-    <a class="reddit-link" href="${htmlEscape(point.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
-    <h3>Original text</h3>
-    <pre>${htmlEscape(point.processed_full_text || point.full_text || "")}</pre>
   `;
 }
 
