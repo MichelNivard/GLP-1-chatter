@@ -16,6 +16,11 @@ on:
         description: "Maximum posts/comments to parse"
         required: false
         default: "50"
+      retry_errors:
+        description: "Retry rows previously marked error"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
   contents: write
@@ -36,11 +41,16 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python scripts/parse_reports.py \
-            --limit "${{ github.event.inputs.limit || '50' }}" \
-            --model gpt-5.4-nano \
-            --rescreen-model gpt-5.4-mini \
+          args=(
+            --limit "${{ github.event.inputs.limit || '50' }}"
+            --model gpt-5.4-nano
+            --rescreen-model gpt-5.4-mini
             --prompt-cache-retention 24h
+          )
+          if [ "${{ github.event.inputs.retry_errors || 'false' }}" = "true" ]; then
+            args+=(--retry-errors)
+          fi
+          python scripts/parse_reports.py "${args[@]}"
       - name: Commit parsed database
         run: |
           git config user.name "github-actions[bot]"

@@ -196,10 +196,12 @@ def load_prompt(rescreen: bool = False) -> str:
 
 
 def prompt_cache_key(pass_type: str, model: str, explicit_prefix: str | None = None) -> str:
-    base = explicit_prefix or "glp1-reddit-extraction"
+    base = explicit_prefix or "glp1"
     digest = hashlib.sha256(PROMPT_VERSION.encode("utf-8")).hexdigest()[:12]
     safe_model = "".join(char if char.isalnum() or char in "-_" else "-" for char in model)
-    return f"{base}-{PROMPT_VERSION}-{pass_type}-{safe_model}-{digest}"[:128]
+    suffix = f"{pass_type}-{safe_model}-{digest}"
+    max_base_length = max(1, 63 - len(suffix))
+    return f"{base[:max_base_length]}-{suffix}"[:64]
 
 
 def build_user_input(row: sqlite3.Row, *, prefer_processed_text: bool = False) -> str:
