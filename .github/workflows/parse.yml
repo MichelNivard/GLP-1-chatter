@@ -28,6 +28,7 @@ jobs:
       - name: Initialize database
         run: python scripts/init_db.py
       - name: Parse pending candidates one item per API call
+        shell: bash
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |

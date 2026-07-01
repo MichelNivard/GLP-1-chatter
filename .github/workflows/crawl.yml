@@ -37,6 +37,7 @@ jobs:
       - name: Initialize database
         run: python scripts/init_db.py
       - name: Crawl recent Reddit candidates
+        shell: bash
         run: |
           args=(
             --source auto
