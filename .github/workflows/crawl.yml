@@ -13,6 +13,10 @@ on:
         description: "Recent crawl window in days"
         required: false
         default: "7"
+      source:
+        description: "Crawler backend: pullpush, reddit_json, or auto"
+        required: false
+        default: "pullpush"
       limit:
         description: "Maximum candidates to store, 0 means no explicit limit"
         required: false
@@ -26,6 +30,38 @@ on:
         description: "Pages per subreddit/term/source type"
         required: false
         default: "1"
+      subreddits:
+        description: "Optional comma-separated subreddit allowlist"
+        required: false
+        default: ""
+      terms:
+        description: "Optional comma-separated search-term allowlist"
+        required: false
+        default: ""
+      source_types:
+        description: "Optional source types: submission,comment"
+        required: false
+        default: ""
+      delay_seconds:
+        description: "Delay between requests"
+        required: false
+        default: "8"
+      max_combinations:
+        description: "Maximum subreddit/term/source-type combinations, 0 means no cap"
+        required: false
+        default: "0"
+      max_requests:
+        description: "Maximum HTTP requests before graceful stop, 0 means no cap"
+        required: false
+        default: "0"
+      max_minutes:
+        description: "Maximum runtime before graceful stop, 0 means no cap"
+        required: false
+        default: "0"
+      resume_checkpoints:
+        description: "Resume crawl_state checkpoints: auto, true, or false"
+        required: false
+        default: "auto"
 
 permissions:
   contents: write
@@ -41,18 +77,36 @@ jobs:
           python-version: "3.12"
       - name: Initialize database
         run: python scripts/init_db.py
-      - name: Crawl recent Reddit candidates
+      - name: Crawl Reddit candidates
         shell: bash
         run: |
+          seed_historical="${{ github.event.inputs.seed_historical || 'false' }}"
+          resume_checkpoints="${{ github.event.inputs.resume_checkpoints || 'auto' }}"
           args=(
-            --source auto
+            --source "${{ github.event.inputs.source || 'pullpush' }}"
             --limit "${{ github.event.inputs.limit || '0' }}"
             --pages "${{ github.event.inputs.pages || '1' }}"
+            --delay-seconds "${{ github.event.inputs.delay_seconds || '8' }}"
+            --max-combinations "${{ github.event.inputs.max_combinations || '0' }}"
+            --max-requests "${{ github.event.inputs.max_requests || '0' }}"
+            --max-minutes "${{ github.event.inputs.max_minutes || '0' }}"
           )
-          if [ "${{ github.event.inputs.seed_historical || 'false' }}" = "true" ]; then
+          if [ "${{ github.event.inputs.subreddits || '' }}" != "" ]; then
+            args+=(--subreddits "${{ github.event.inputs.subreddits }}")
+          fi
+          if [ "${{ github.event.inputs.terms || '' }}" != "" ]; then
+            args+=(--terms "${{ github.event.inputs.terms }}")
+          fi
+          if [ "${{ github.event.inputs.source_types || '' }}" != "" ]; then
+            args+=(--source-types "${{ github.event.inputs.source_types }}")
+          fi
+          if [ "$seed_historical" = "true" ]; then
             args+=(--seed-historical)
           else
             args+=(--since-days "${{ github.event.inputs.since_days || '7' }}")
+          fi
+          if [ "$resume_checkpoints" = "true" ] || { [ "$resume_checkpoints" = "auto" ] && [ "$seed_historical" = "true" ]; }; then
+            args+=(--resume-checkpoints)
           fi
           python scripts/crawl_reddit.py "${args[@]}"
       - name: Commit crawl updates

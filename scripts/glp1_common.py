@@ -138,6 +138,29 @@ CREATE INDEX IF NOT EXISTS idx_reports_family
   ON extracted_reports(drug_family, canonical, include_in_plots);
 CREATE INDEX IF NOT EXISTS idx_reports_hash
   ON extracted_reports(content_hash, source_pass);
+
+CREATE TABLE IF NOT EXISTS crawl_state (
+  crawl_key TEXT PRIMARY KEY,
+  source_backend TEXT NOT NULL,
+  source_type TEXT NOT NULL CHECK (source_type IN ('submission', 'comment')),
+  subreddit TEXT NOT NULL,
+  term TEXT NOT NULL,
+  window_kind TEXT NOT NULL CHECK (window_kind IN ('historical', 'recent')),
+  after_epoch INTEGER,
+  pullpush_before INTEGER,
+  reddit_after TEXT,
+  pages_fetched INTEGER NOT NULL DEFAULT 0,
+  exhausted INTEGER NOT NULL DEFAULT 0 CHECK (exhausted IN (0, 1)),
+  consecutive_errors INTEGER NOT NULL DEFAULT 0,
+  last_status_code INTEGER,
+  last_error TEXT,
+  last_started_at TEXT,
+  last_finished_at TEXT,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_crawl_state_combo
+  ON crawl_state(subreddit, term, source_type, window_kind);
 """
 
 

@@ -1,6 +1,12 @@
 {
   "default_source": "pullpush",
-  "request_delay_seconds": 1.5,
+  "request_delay_seconds": 8.0,
+  "request_max_retries": 4,
+  "backoff_base_seconds": 30.0,
+  "max_backoff_seconds": 300.0,
+  "rate_limit_cooldown_seconds": 0.0,
+  "stop_on_rate_limit": true,
+  "resume_checkpoints": false,
   "reddit_user_agent": "glp1-reddit-user-report-miner/0.1 (github-pages static research project)",
   "subreddits": [
     "Retatrutide",
