@@ -90,10 +90,10 @@ def site_header(asset_prefix: str = "", active: str = "overview") -> str:
       <nav class="nav" aria-label="Primary">
         {nav_link("Overview", home, "overview", active)}
         {nav_link("Compare Drugs", f"{home}#compare", "compare", active)}
-        {nav_link("Weight Change", f"{home}#weight-change", "weight", active)}
-        {nav_link("Side Effects", f"{home}#side-effects", "effects", active)}
-        {nav_link("Methods", f"{home}#methods", "methods", active)}
-        {nav_link("Data Status", f"{home}#data-status", "status", active)}
+        {nav_link("Weight Change", f"{home}weight-change/", "weight", active)}
+        {nav_link("Side Effects", f"{home}side-effects/", "effects", active)}
+        {nav_link("Methods", f"{home}methods/", "methods", active)}
+        {nav_link("Data Status", f"{home}data-status/", "status", active)}
       </nav>
     </div>
   </header>
@@ -910,10 +910,8 @@ def html_page(title: str, body: str, asset_prefix: str = "") -> str:
 
 def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dict[str, dict[str, Any]]) -> str:
     cards = []
-    effects_cards = []
     for family in DRUG_FAMILIES:
         item = summary["families"][family]
-        effects = ", ".join(effect["phrase"] for effect in item["most_common_side_effects"][:3]) or "n/a"
         cards.append(
             f"""
       <article class="drug family-{family}">
@@ -932,15 +930,6 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
       </article>
 """
         )
-        effects_cards.append(
-            f"""
-      <article class="route effect-route family-{family}">
-        <strong>{html.escape(FAMILY_NAMES[family])}</strong>
-        <span>{html.escape(effects)}</span>
-        <a href="{family}/side-effects.html">Open Side Effects</a>
-      </article>
-"""
-        )
     body = f"""
 <body>
   {site_header(active="overview")}
@@ -951,58 +940,142 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
         <h1>Compare reported outcomes across three GLP-1 drug families.</h1>
         <p>This static site summarizes structured extractions from Reddit posts and comments mentioning Retatrutide, Tirzepatide, and Semaglutide. It is observational social-media text mining, not medical advice, clinical evidence, or proof of causality.</p>
       </div>
-      <aside class="route-panel" aria-label="Primary routes">
-        <div class="route-grid">
-          <a class="route" href="#weight-change"><strong>Weight Change</strong><span>Duration, kilograms changed, fitted Reddit trend, and optional RCT overlay.</span></a>
-          <a class="route" href="#side-effects"><strong>Side Effects</strong><span>Normalized phrases, frequency bars, co-mentions, and source-level evidence.</span></a>
-          <a class="route" href="#methods"><strong>Methods</strong><span>Crawler scope, one-item LLM parsing, rescreening rules, and caveats.</span></a>
-        </div>
+      <aside class="route-panel site-note" aria-label="How to use this site">
+        <h2>How to read it</h2>
+        <p>Start with one of the three drug cards. Each card links directly to that drug's weight-change plot or side-effect page, and every drug page lets you switch to the other drugs. The top navigation opens a choice page for Weight Change or Side Effects, and separate pages for Methods and Data Status.</p>
+        <p class="note-links"><a href="weight-change/">Choose a weight-change view</a><a href="side-effects/">Choose a side-effect view</a></p>
       </aside>
     </section>
     <section id="compare" class="comparison" aria-label="Drug comparison">
       {''.join(cards)}
     </section>
-    <section id="weight-change" class="section-panel">
-      <div>
-        <p class="eyebrow">Weight Change</p>
-        <h2>Reddit reports by duration and weight change</h2>
-        <p>Each drug page shows one point per extracted report, omits reports under 21 days, and plots weight loss as negative change in kilograms.</p>
-      </div>
-      <div class="route-grid route-grid-wide">
-        <a class="route" href="reta/"><strong>Retatrutide</strong><span>Open the Retatrutide weight-change scatterplot.</span></a>
-        <a class="route" href="tirz/"><strong>Tirzepatide</strong><span>Open the Tirzepatide weight-change scatterplot.</span></a>
-        <a class="route" href="sema/"><strong>Semaglutide</strong><span>Open the Semaglutide weight-change scatterplot.</span></a>
-      </div>
-    </section>
-    <section id="side-effects" class="section-panel">
-      <div>
-        <p class="eyebrow">Side Effects</p>
-        <h2>Commonly extracted side-effect phrases</h2>
-        <p>Side-effect pages show normalized phrase counts, co-occurrence patterns, and original Reddit evidence for each report.</p>
-      </div>
-      <div class="route-grid route-grid-wide">
-        {''.join(effects_cards)}
-      </div>
-    </section>
-    <section id="methods" class="section-panel">
-      <div>
-        <p class="eyebrow">Methods</p>
-        <h2>One Reddit item per LLM call</h2>
-        <p>Candidate posts and comments are stored with original full text and URLs. The parser extracts raw values only; Python code converts units and flags large losses, notable gains, or long durations for mini-model review.</p>
-      </div>
-      <a class="route route-single" href="concurrent/"><strong>Concurrent-use network</strong><span>Explore normalized compounds mentioned together in extracted reports.</span></a>
-    </section>
-    <section id="data-status" class="section-panel data-status">
-      <div>
-        <p class="eyebrow">Data Status</p>
-        <h2>Generated {html.escape(generated_at)}</h2>
-        <p>GitHub Actions crawls, parses, rescreens flagged reports, rebuilds the static JSON bundles, and publishes the site to GitHub Pages.</p>
-      </div>
-    </section>
   </main>
 </body>
 """
     return html_page("GLP-1 Reddit Reports", body)
+
+
+def render_weight_choice_page(summary: dict[str, Any], generated_at: str) -> str:
+    cards = []
+    for family in DRUG_FAMILIES:
+        item = summary["families"][family]
+        cards.append(
+            f"""
+      <a class="route choice-card family-{family}" href="../{family}/">
+        <strong>{html.escape(FAMILY_NAMES[family])}</strong>
+        <span>{item["plottable_reports"]} plottable reports; median {fmt_number(item["median_duration_weeks"])} weeks and {fmt_number(item["median_weight_change_kg"])} kg.</span>
+      </a>
+"""
+        )
+    body = f"""
+<body>
+  {site_header("../", active="weight")}
+  <main class="page">
+    <section class="page-heading">
+      <p class="eyebrow">Weight Change</p>
+      <h1>Choose a drug family.</h1>
+      <p>Each plot shows mined Reddit reports for one drug family. Duration is shown in weeks, weight change is shown in kilograms, and weight loss is negative by convention. You can switch drug families from the tabs on any plot page.</p>
+      <p class="meta">Generated {html.escape(generated_at)}</p>
+    </section>
+    <section class="route-grid route-grid-wide choice-grid" aria-label="Weight-change drug choices">
+      {''.join(cards)}
+    </section>
+  </main>
+</body>
+"""
+    return html_page("Weight Change Choices", body, asset_prefix="../")
+
+
+def render_side_effect_choice_page(summary: dict[str, Any], generated_at: str) -> str:
+    cards = []
+    for family in DRUG_FAMILIES:
+        item = summary["families"][family]
+        effects = ", ".join(effect["phrase"] for effect in item["most_common_side_effects"][:3]) or "No side effects extracted yet"
+        cards.append(
+            f"""
+      <a class="route choice-card family-{family}" href="../{family}/side-effects.html">
+        <strong>{html.escape(FAMILY_NAMES[family])}</strong>
+        <span>Common extracted phrases: {html.escape(effects)}.</span>
+      </a>
+"""
+        )
+    body = f"""
+<body>
+  {site_header("../", active="effects")}
+  <main class="page">
+    <section class="page-heading">
+      <p class="eyebrow">Side Effects</p>
+      <h1>Choose a drug family.</h1>
+      <p>Each side-effect page shows normalized phrase counts, co-mentions, report excerpts, and the original Reddit text. The normalization is auditable and conservative; these are user reports, not verified clinical adverse-event rates.</p>
+      <p class="meta">Generated {html.escape(generated_at)}</p>
+    </section>
+    <section class="route-grid route-grid-wide choice-grid" aria-label="Side-effect drug choices">
+      {''.join(cards)}
+    </section>
+  </main>
+</body>
+"""
+    return html_page("Side Effect Choices", body, asset_prefix="../")
+
+
+def render_methods_page(generated_at: str) -> str:
+    body = f"""
+<body>
+  {site_header("../", active="methods")}
+  <main class="page">
+    <section class="page-heading">
+      <p class="eyebrow">Methods</p>
+      <h1>How the site is built.</h1>
+      <p>This project stores raw Reddit candidate posts and comments, parses one item per LLM call, validates strict JSON, converts units in code, and rescreens reports with large losses, notable gains, or long durations. The LLM extracts raw values only; plotting and unit conversion are computational.</p>
+      <p class="meta">Generated {html.escape(generated_at)}</p>
+    </section>
+    <section class="method-grid">
+      <article class="section-panel"><h2>Crawling</h2><p>Relevant Reddit sources are crawled slowly and politely. Raw candidate text, URLs, matched terms, timestamps, and source metadata are retained in SQLite.</p></article>
+      <article class="section-panel"><h2>Extraction</h2><p>Each post or comment is parsed independently with a structured JSON schema. Previously processed post IDs are not reparsed just because text or hash metadata changes.</p></article>
+      <article class="section-panel"><h2>Rescreening</h2><p>Large extracted values are reviewed by a stronger model, including weight loss over 25 kg, weight gain over 5 kg, or duration over 365 days.</p></article>
+      <article class="section-panel"><h2>Plotting</h2><p>Weight loss is plotted as negative weight change in kilograms. Reddit fitted curves are computed from Reddit reports only and do not use optional RCT overlays.</p></article>
+    </section>
+  </main>
+</body>
+"""
+    return html_page("Methods", body, asset_prefix="../")
+
+
+def render_data_status_page(summary: dict[str, Any], generated_at: str) -> str:
+    rows = []
+    for family in DRUG_FAMILIES:
+        item = summary["families"][family]
+        rows.append(
+            f"""
+        <tr>
+          <td>{html.escape(FAMILY_NAMES[family])}</td>
+          <td>{item["parsed_posts"]}</td>
+          <td>{item["plottable_reports"]}</td>
+          <td>{fmt_number(item["median_duration_weeks"])} weeks</td>
+          <td>{fmt_number(item["median_weight_change_kg"])} kg</td>
+        </tr>
+"""
+        )
+    body = f"""
+<body>
+  {site_header("../", active="status")}
+  <main class="page">
+    <section class="page-heading">
+      <p class="eyebrow">Data Status</p>
+      <h1>Current generated dataset.</h1>
+      <p>GitHub Actions crawls Reddit candidates, parses pending items, rescreens flagged reports, rebuilds the static JSON bundles, and publishes the Pages site. Counts below reflect the SQLite database at build time.</p>
+      <p class="meta">Generated {html.escape(generated_at)}</p>
+    </section>
+    <section class="table-section">
+      <table>
+        <thead><tr><th>Drug family</th><th>Parsed posts</th><th>Plottable reports</th><th>Median duration</th><th>Median change</th></tr></thead>
+        <tbody>{''.join(rows)}</tbody>
+      </table>
+    </section>
+  </main>
+</body>
+"""
+    return html_page("Data Status", body, asset_prefix="../")
 
 
 def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
@@ -1217,6 +1290,18 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     concurrent_dir = site_dir / "concurrent"
     concurrent_dir.mkdir(parents=True, exist_ok=True)
     (concurrent_dir / "index.html").write_text(render_concurrent_page(generated_at), encoding="utf-8")
+    weight_dir = site_dir / "weight-change"
+    weight_dir.mkdir(parents=True, exist_ok=True)
+    (weight_dir / "index.html").write_text(render_weight_choice_page(summary, generated_at), encoding="utf-8")
+    effects_dir = site_dir / "side-effects"
+    effects_dir.mkdir(parents=True, exist_ok=True)
+    (effects_dir / "index.html").write_text(render_side_effect_choice_page(summary, generated_at), encoding="utf-8")
+    methods_dir = site_dir / "methods"
+    methods_dir.mkdir(parents=True, exist_ok=True)
+    (methods_dir / "index.html").write_text(render_methods_page(generated_at), encoding="utf-8")
+    status_dir = site_dir / "data-status"
+    status_dir.mkdir(parents=True, exist_ok=True)
+    (status_dir / "index.html").write_text(render_data_status_page(summary, generated_at), encoding="utf-8")
     (site_dir / "index.html").write_text(render_home(summary, generated_at, family_payloads), encoding="utf-8")
     return summary
 

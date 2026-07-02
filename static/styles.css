@@ -181,6 +181,40 @@ p {
   padding: 1rem;
 }
 
+.site-note {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.site-note h2 {
+  font-size: 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.site-note p {
+  margin-bottom: 0;
+}
+
+.note-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.note-links a {
+  color: var(--green);
+  font-size: 0.92rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.note-links a:hover {
+  text-decoration: underline;
+}
+
 .route-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -427,6 +461,40 @@ p {
 
 .route-single {
   max-width: 420px;
+}
+
+.choice-grid {
+  margin-bottom: 1rem;
+}
+
+.choice-card {
+  min-height: 148px;
+}
+
+.choice-card strong {
+  font-size: 1.25rem;
+}
+
+.choice-card.family-reta {
+  border-top-color: var(--green);
+}
+
+.choice-card.family-tirz {
+  border-top-color: var(--blue);
+}
+
+.choice-card.family-sema {
+  border-top-color: var(--orange);
+}
+
+.method-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.method-grid .section-panel {
+  margin-bottom: 0;
 }
 
 .data-status {
@@ -1357,6 +1425,7 @@ th {
   .hero,
   .comparison,
   .route-grid,
+  .method-grid,
   .summary-grid,
   .plot-layout,
   .network-layout,
