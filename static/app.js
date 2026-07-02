@@ -207,7 +207,7 @@ function renderSideEffects(data) {
   let query = "";
   let visibleReports = 18;
   let observer = null;
-  const graphEffectLimit = 72;
+  const graphEffectLimit = 56;
 
   function reportForId(id) {
     return reports[String(id)] || reports[id];
@@ -333,9 +333,9 @@ function renderSideEffects(data) {
     const height = 760;
     const cx = width / 2;
     const cy = height / 2;
-    const arcRadius = 270;
-    const ribbonRadius = 226;
-    const labelRadius = 333;
+    const arcRadius = 280;
+    const ribbonRadius = 218;
+    const labelRadius = 330;
     network.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
     const nodeMap = new Map(nodes.map((item) => [item.phrase, item]));
@@ -344,7 +344,7 @@ function renderSideEffects(data) {
       .sort((a, b) => Number(a.count || 0) - Number(b.count || 0));
     const maxLink = Math.max(1, ...visibleLinks.map((link) => Number(link.count || 0)));
     const total = nodes.reduce((sum, item) => sum + Math.max(1, Number(item.count || 0)), 0);
-    const gap = nodes.length > 50 ? 0.012 : 0.02;
+    const gap = nodes.length > 50 ? 0.018 : 0.028;
     const usableAngle = Math.PI * 2 - gap * nodes.length;
     const minSpan = Math.min(0.045, usableAngle / nodes.length * 0.4);
     const weightedAngle = Math.max(0.1, usableAngle - minSpan * nodes.length);
@@ -362,7 +362,9 @@ function renderSideEffects(data) {
       cursor += span;
     });
 
-    network.appendChild(el("circle", { cx, cy, r: ribbonRadius - 24, class: "effect-core" }));
+    network.appendChild(el("circle", { cx, cy, r: arcRadius + 28, class: "effect-ring effect-ring-outer" }));
+    network.appendChild(el("circle", { cx, cy, r: arcRadius - 20, class: "effect-ring effect-ring-inner" }));
+    network.appendChild(el("circle", { cx, cy, r: ribbonRadius - 26, class: "effect-core" }));
 
     const edgeLayer = el("g", { class: "effect-chord-edges" });
     visibleLinks.forEach((link) => {
@@ -372,8 +374,9 @@ function renderSideEffects(data) {
       const sourceNode = nodeMap.get(link.source);
       const color = effectColor(sourceNode.index);
       const active = selectedPair && selectedPair.source === link.source && selectedPair.target === link.target;
+      const touchesSelection = activeEffects().includes(link.source) || activeEffects().includes(link.target);
       const d = `M${source.x.toFixed(2)},${source.y.toFixed(2)} C${cx.toFixed(2)},${cy.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`;
-      const strokeWidth = 1.2 + Math.sqrt(Number(link.count || 0) / maxLink) * 15;
+      const strokeWidth = 0.9 + Math.sqrt(Number(link.count || 0) / maxLink) * 9;
       const selectPair = () => {
         selectedPair = { source: link.source, target: link.target, report_ids: link.report_ids || [] };
         selectedEffect = link.source;
@@ -382,7 +385,7 @@ function renderSideEffects(data) {
       };
       const path = el("path", {
         d,
-        class: `effect-chord-edge${active ? " active" : ""}`,
+        class: `effect-chord-edge${active ? " active" : ""}${touchesSelection ? " related" : ""}`,
         style: `stroke:${color}`,
         "stroke-width": strokeWidth.toFixed(2),
       });
@@ -393,6 +396,8 @@ function renderSideEffects(data) {
         tabindex: 0,
       });
       hitPath.appendChild(el("title", {}, `${link.source} + ${link.target}: ${link.count} reports`));
+      hitPath.addEventListener("mouseenter", () => path.classList.add("hovered"));
+      hitPath.addEventListener("mouseleave", () => path.classList.remove("hovered"));
       hitPath.addEventListener("click", selectPair);
       hitPath.addEventListener("focus", selectPair);
       edgeLayer.appendChild(path);
@@ -404,10 +409,14 @@ function renderSideEffects(data) {
     nodes.forEach((node) => {
       const position = positions.get(node.phrase);
       const color = effectColor(node.index);
-      const active = !selectedPair && selectedEffect === node.phrase;
+      const active = activeEffects().includes(node.phrase);
+      const tier = node.index < 12 ? "major" : (node.index < 28 ? "middle" : "tail");
+      const group = el("g", {
+        class: `effect-chord-node effect-chord-node-${tier}${active ? " active" : ""}`,
+      });
       const arc = el("path", {
         d: arcPath(cx, cy, arcRadius, position.startAngle, position.endAngle),
-        class: `effect-chord-arc${active ? " active" : ""}`,
+        class: `effect-chord-arc effect-chord-arc-${tier}${active ? " active" : ""}`,
         style: `stroke:${color}`,
         tabindex: 0,
       });
@@ -424,17 +433,18 @@ function renderSideEffects(data) {
         visibleReports = 18;
         renderAll();
       });
-      arcLayer.appendChild(arc);
+      group.appendChild(arc);
 
       const labelPosition = radialTextTransform(cx, cy, labelRadius, position.angle);
       const label = node.phrase.length > 26 ? `${node.phrase.slice(0, 24)}...` : node.phrase;
-      arcLayer.appendChild(el("text", {
+      group.appendChild(el("text", {
         x: labelPosition.x.toFixed(2),
         y: labelPosition.y.toFixed(2),
         transform: labelPosition.transform,
         "text-anchor": "middle",
         class: "effect-chord-label",
       }, label));
+      arcLayer.appendChild(group);
     });
     network.appendChild(arcLayer);
   }
@@ -577,7 +587,6 @@ function renderSideEffects(data) {
   }, { rootMargin: "500px" });
   if (sentinel) observer.observe(sentinel);
 
-  table.innerHTML = "";
   if (!effects.length) {
     status.textContent = "No side effects extracted yet.";
     return;

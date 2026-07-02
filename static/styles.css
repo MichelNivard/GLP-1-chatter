@@ -675,23 +675,48 @@ dd {
   width: 100%;
 }
 
+.effect-ring {
+  fill: none;
+  pointer-events: none;
+  stroke: #e7edf0;
+}
+
+.effect-ring-outer {
+  opacity: 0.62;
+  stroke-width: 1.5;
+}
+
+.effect-ring-inner {
+  opacity: 0.9;
+  stroke-dasharray: 2 8;
+  stroke-linecap: round;
+  stroke-width: 1;
+}
+
 .effect-core {
-  fill: #fffefa;
-  opacity: 0.76;
+  fill: #fbfcfb;
+  opacity: 0.88;
 }
 
 .effect-chord-edge {
   fill: none;
-  opacity: 0.35;
+  mix-blend-mode: multiply;
+  opacity: 0.16;
   stroke-linecap: round;
   cursor: pointer;
 }
 
 .effect-chord-edge:hover,
 .effect-chord-edge:focus,
+.effect-chord-edge.hovered,
+.effect-chord-edge.related,
 .effect-chord-edge.active {
-  opacity: 0.74;
+  opacity: 0.52;
   outline: none;
+}
+
+.effect-chord-edge.active {
+  opacity: 0.82;
 }
 
 .effect-chord-hit {
@@ -709,26 +734,48 @@ dd {
 .effect-chord-arc {
   fill: none;
   stroke-linecap: butt;
-  stroke-width: 18;
+  opacity: 0.82;
   cursor: pointer;
   filter: drop-shadow(0 5px 10px rgba(31, 36, 40, 0.06));
+}
+
+.effect-chord-arc-major {
+  stroke-width: 22;
+}
+
+.effect-chord-arc-middle {
+  stroke-width: 16;
+}
+
+.effect-chord-arc-tail {
+  opacity: 0.64;
+  stroke-width: 10;
 }
 
 .effect-chord-arc:hover,
 .effect-chord-arc:focus,
 .effect-chord-arc.active {
-  opacity: 0.76;
+  opacity: 1;
   outline: none;
 }
 
 .effect-chord-label {
   fill: var(--ink);
-  font-size: 10px;
-  font-weight: 740;
+  font-size: 12px;
+  font-weight: 780;
+  opacity: 0;
   paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.95);
+  pointer-events: none;
+  stroke: rgba(255, 255, 255, 0.98);
   stroke-linejoin: round;
-  stroke-width: 4px;
+  stroke-width: 5px;
+  transition: opacity 0.12s ease;
+}
+
+.effect-chord-node:hover .effect-chord-label,
+.effect-chord-node:focus-within .effect-chord-label,
+.effect-chord-node.active .effect-chord-label {
+  opacity: 1;
 }
 
 .effect-edge {
