@@ -162,105 +162,174 @@ p {
 }
 
 .home-essay {
-  max-width: 1120px;
+  font-family: Georgia, "Times New Roman", serif;
   margin: 0 auto;
+  max-width: 1160px;
 }
 
 .essay-header {
-  max-width: 940px;
-  margin-bottom: 1.35rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.55rem;
+  max-width: 1040px;
+  padding-bottom: 1.35rem;
+}
+
+.home-essay h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.2rem, 7vw, 7.8rem);
+  font-weight: 500;
+  line-height: 0.9;
+  max-width: 1040px;
 }
 
 .essay-deck {
-  color: var(--ink);
-  font-size: 1.35rem;
-  font-weight: 760;
-  line-height: 1.35;
+  color: #343832;
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.4;
   margin-bottom: 0;
+  max-width: 760px;
 }
 
 .home-essay > p {
-  color: var(--ink);
-  font-size: 1.08rem;
-  line-height: 1.78;
-  max-width: 780px;
+  color: #32372f;
+  font-size: 1.12rem;
+  line-height: 1.74;
+  max-width: 760px;
 }
 
 .home-essay .essay-lede {
-  color: var(--muted);
-  font-size: 1.16rem;
-  line-height: 1.7;
-  max-width: 860px;
+  color: #3d433b;
+  font-size: 1.22rem;
+  line-height: 1.68;
+  max-width: 900px;
+}
+
+.home-essay .eyebrow {
+  color: var(--green);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .story-snapshot {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-  margin: 0.35rem 0 1.2rem;
-  max-width: 390px;
-  overflow: hidden;
+  background: #fffefa;
+  border: 0;
+  border-top: 3px solid var(--green);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin: 0.25rem 0 1.15rem;
+  overflow: visible;
+  padding-top: 0.55rem;
+  width: clamp(300px, 34vw, 390px);
+}
+
+.story-snapshot.family-tirz {
+  border-top-color: var(--blue);
+}
+
+.story-snapshot.family-sema {
+  border-top-color: var(--orange);
 }
 
 .story-snapshot-right {
   float: right;
-  margin-left: 1.35rem;
+  margin-left: 1.45rem;
 }
 
 .story-snapshot-left {
   float: left;
-  margin-right: 1.35rem;
+  margin-right: 1.45rem;
 }
 
 .story-snapshot h2 {
-  font-size: 1.45rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: 0;
   margin: 0;
-  padding: 0 1rem 0.35rem;
+  padding: 0 0 0.25rem;
 }
 
 .story-snapshot .aliases,
 .snapshot-note {
-  padding: 0 1rem;
+  padding: 0;
 }
 
 .story-snapshot .aliases {
-  font-size: 0.94rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
   margin-bottom: 0.65rem;
 }
 
 .snapshot-kicker {
   color: var(--muted);
-  font-size: 0.75rem;
+  display: flex;
+  font-size: 0.68rem;
   font-weight: 850;
+  gap: 0.8rem;
+  justify-content: space-between;
   letter-spacing: 0.08em;
-  padding: 1rem 1rem 0.35rem;
+  padding: 0 0 0.4rem;
   text-transform: uppercase;
 }
 
+.snapshot-kicker span {
+  color: #8a8e86;
+  font-weight: 750;
+  text-align: right;
+}
+
 .snapshot-note {
-  color: var(--ink);
-  font-size: 0.94rem;
-  line-height: 1.5;
-  margin-bottom: 0.8rem;
+  border-top: 1px dotted var(--line);
+  color: #3c413a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.92rem;
+  font-style: italic;
+  line-height: 1.48;
+  margin: 0.65rem 0 0.75rem;
+  padding-top: 0.65rem;
 }
 
 .story-snapshot .mini-chart {
-  height: 132px;
-  margin-top: 0.8rem;
+  border-radius: 0;
+  height: 118px;
+  margin: 0 0 0.75rem;
+  width: 100%;
+}
+
+.story-snapshot .metrics {
+  border-top: 1px solid var(--line);
 }
 
 .compact-metrics .metric {
-  padding: 0.8rem;
+  padding: 0.65rem 0.55rem;
+}
+
+.compact-metrics .metric span {
+  font-size: 0.64rem;
 }
 
 .compact-metrics .metric strong {
-  font-size: 1.12rem;
+  font-size: 1rem;
+}
+
+.story-snapshot .actions {
+  gap: 0.45rem;
+  padding: 0.65rem 0 0;
+}
+
+.story-snapshot .button {
+  border-radius: 0;
+  font-size: 0.78rem;
+  min-height: 34px;
 }
 
 .home-footnotes {
   border-top: 1px solid var(--line);
   clear: both;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   margin-top: 2rem;
   padding-top: 1.15rem;
 }
@@ -1636,12 +1705,16 @@ th {
     max-width: none;
   }
 
+}
+
+@media (max-width: 760px) {
   .story-snapshot,
   .story-snapshot-left,
   .story-snapshot-right {
     float: none;
     margin: 1.1rem 0 1.25rem;
     max-width: none;
+    width: 100%;
   }
 }
 

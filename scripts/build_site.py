@@ -911,25 +911,30 @@ def html_page(title: str, body: str, asset_prefix: str = "") -> str:
 def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dict[str, dict[str, Any]]) -> str:
     snapshot_notes = {
         "sema": (
-            "Semaglutide, the GLP-1 drug that first made this new weight-loss era visible "
-            "at mass scale, with Wegovy entering the market in the early 2020s."
+            "Semaglutide was the original GLP-1 wave that made pharmacological weight loss "
+            "feel suddenly visible at mass scale, with Wegovy and Ozempic reshaping the early 2020s."
         ),
         "tirz": (
-            "Tirzepatide followed with dual GIP/GLP-1 activity and became the comparison point "
-            "for many users switching, escalating, or searching for stronger appetite effects."
+            "Tirzepatide followed with dual GIP/GLP-1 activity and became the reference point "
+            "for users switching, escalating, or searching for stronger appetite effects."
         ),
         "reta": (
-            "Retatrutide is not approved as a weight-loss drug, but appears in high-risk-tolerance "
-            "communities unwilling to wait for formal approval and hoping for still larger losses "
-            "while retaining muscle."
+            "Retatrutide is not approved as a weight-loss drug, but appears in higher-risk-tolerance "
+            "communities unwilling to wait for formal approval and hoping for faster loss while "
+            "preserving muscle."
         ),
+    }
+    snapshot_eras = {
+        "sema": "early 2020s",
+        "tirz": "second wave",
+        "reta": "investigational",
     }
 
     def snapshot(family: str, index: int, align: str) -> str:
         item = summary["families"][family]
         return f"""
         <aside class="story-snapshot story-snapshot-{align} family-{family}" aria-label="{html.escape(FAMILY_NAMES[family])} snapshot">
-          <div class="snapshot-kicker">Snapshot {index}</div>
+          <div class="snapshot-kicker">Figure {index}<span>{html.escape(snapshot_eras[family])}</span></div>
           <h2>{html.escape(FAMILY_NAMES[family])}</h2>
           <p class="aliases">{html.escape(FAMILY_COPY[family]["aliases"])}</p>
           <p class="snapshot-note">{html.escape(snapshot_notes[family])}</p>
