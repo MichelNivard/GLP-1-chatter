@@ -269,6 +269,22 @@ function renderSideEffects(data) {
     return `<span class="severity-badge severity-${htmlEscape(severity)}">${htmlEscape(severity)}</span>`;
   }
 
+  function titleCase(value) {
+    return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
+  }
+
+  function effectFrequencyCount(effect) {
+    if (selectedSeverity === "all") return Number(effect.count || 0);
+    return Number(effect.severity_counts?.[selectedSeverity] || 0);
+  }
+
+  function frequencyEffects() {
+    return effects
+      .map((effect) => ({ ...effect, active_count: effectFrequencyCount(effect) }))
+      .filter((effect) => selectedSeverity === "all" || effect.active_count > 0)
+      .sort((a, b) => b.active_count - a.active_count || b.count - a.count || a.phrase.localeCompare(b.phrase));
+  }
+
   function effectColor(index) {
     const palette = [
       "#8bbde8", "#efb189", "#8fcdb6", "#c8abe4", "#f2a5c5", "#cadb91",
@@ -286,15 +302,20 @@ function renderSideEffects(data) {
   function renderBars() {
     bars.innerHTML = "";
     if (!effects.length) return;
-    const max = Math.max(...effects.map((item) => item.count));
-    effects.slice(0, 18).forEach((item) => {
+    const rows = frequencyEffects();
+    if (!rows.length) {
+      bars.innerHTML = `<p class="status">No ${htmlEscape(selectedSeverity)} side-effect labels found.</p>`;
+      return;
+    }
+    const max = Math.max(...rows.map((item) => item.active_count));
+    rows.slice(0, 18).forEach((item) => {
       const row = document.createElement("button");
       row.type = "button";
       row.className = `bar-row effect-bar-row${!selectedPair && item.phrase === selectedEffect ? " active" : ""}`;
       row.innerHTML = `
         <span>${htmlEscape(item.phrase)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, item.count / max * 100)}%"></div></div>
-        <strong>${item.count}</strong>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, item.active_count / max * 100)}%"></div></div>
+        <strong>${item.active_count}</strong>
       `;
       row.addEventListener("click", () => {
         selectedEffect = item.phrase;
@@ -521,13 +542,18 @@ function renderSideEffects(data) {
 
   function renderTable() {
     table.innerHTML = "";
-    effects.forEach((item) => {
+    const countHeader = table.closest("table")?.querySelector("thead th:nth-child(2)");
+    if (countHeader) {
+      countHeader.textContent = selectedSeverity === "all" ? "Reports" : `${titleCase(selectedSeverity)} reports`;
+    }
+    const rows = frequencyEffects();
+    rows.forEach((item) => {
       const counts = item.severity_counts || {};
       const tr = document.createElement("tr");
       tr.className = activeEffects().includes(item.phrase) ? "selected-row" : "";
       tr.innerHTML = `
         <td><button type="button" class="table-link">${htmlEscape(item.phrase)}</button></td>
-        <td>${item.count}</td>
+        <td>${item.active_count}</td>
         <td>${counts.mild || 0}</td>
         <td>${counts.moderate || 0}</td>
         <td>${counts.severe || 0}</td>
@@ -554,7 +580,8 @@ function renderSideEffects(data) {
       return;
     }
     const filteredReports = selectedReports();
-    status.textContent = `${explorer.summary?.reports_with_side_effects || Object.keys(reports).length} reports with side-effect mentions, ${effects.length} normalized phrases.`;
+    const severityText = selectedSeverity === "all" ? "all severities" : `${selectedSeverity} labels`;
+    status.textContent = `${explorer.summary?.reports_with_side_effects || Object.keys(reports).length} reports with side-effect mentions, ${effects.length} normalized phrases; frequency shows ${severityText}.`;
     renderBars();
     renderEffectNetwork();
     renderDetailPanel(filteredReports);
