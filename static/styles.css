@@ -221,7 +221,7 @@ dd {
 }
 
 .network-area {
-  min-height: 680px;
+  min-height: 760px;
   padding: 0.75rem;
 }
 
@@ -234,7 +234,7 @@ dd {
 .compound-network {
   display: block;
   width: 100%;
-  min-height: 650px;
+  min-height: 740px;
 }
 
 .status {
@@ -370,16 +370,56 @@ dd {
   color: var(--ink);
 }
 
+.network-core {
+  fill: #fffefa;
+  opacity: 0.78;
+}
+
+.network-arc {
+  fill: none;
+  stroke-linecap: butt;
+  stroke-width: 28;
+  cursor: pointer;
+  filter: drop-shadow(0 5px 10px rgba(31, 36, 40, 0.08));
+}
+
+.network-arc:hover,
+.network-arc:focus {
+  opacity: 0.78;
+  outline: none;
+}
+
+.network-tick {
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+
+.network-tick-label {
+  fill: var(--ink);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.network-radial-label {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 720;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.94);
+  stroke-linejoin: round;
+  stroke-width: 5px;
+}
+
 .network-edge {
   fill: none;
-  stroke: rgba(80, 92, 105, 0.34);
   stroke-linecap: round;
+  opacity: 0.42;
   cursor: pointer;
 }
 
 .network-edge:hover,
 .network-edge:focus {
-  stroke: rgba(31, 36, 40, 0.76);
+  opacity: 0.74;
   outline: none;
 }
 
@@ -387,8 +427,7 @@ dd {
   cursor: pointer;
 }
 
-.network-node circle,
-.network-legend circle {
+.network-node circle {
   stroke: #fff;
   stroke-width: 1.5;
   fill: #8b949e;
@@ -401,70 +440,73 @@ dd {
   outline: none;
 }
 
-.network-node text,
 .network-legend text {
   fill: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.92);
-  stroke-width: 4px;
-  stroke-linejoin: round;
 }
 
 .compound-family-reta circle,
 .compound-family-reta {
-  fill: var(--green);
+  fill: #8fcdb6;
 }
 
 .compound-family-tirz circle,
 .compound-family-tirz {
-  fill: var(--blue);
+  fill: #8bbde8;
 }
 
 .compound-family-sema circle,
 .compound-family-sema {
-  fill: var(--orange);
+  fill: #efb189;
 }
 
 .compound-family-amylin circle,
 .compound-family-amylin {
-  fill: #8a63b8;
+  fill: #c8abe4;
 }
 
 .compound-family-glp1_other circle,
 .compound-family-glp1_other {
-  fill: #5b8f9a;
+  fill: #9fd6d5;
 }
 
 .compound-family-stimulant circle,
 .compound-family-stimulant {
-  fill: #c94c78;
+  fill: #f2a5c5;
 }
 
 .compound-family-diabetes_drug circle,
 .compound-family-diabetes_drug {
-  fill: #7b8c31;
+  fill: #cadb91;
 }
 
 .compound-family-hormone circle,
 .compound-family-hormone {
-  fill: #b56a2c;
+  fill: #e8c18f;
 }
 
 .compound-family-peptide circle,
 .compound-family-peptide {
-  fill: #6f77c8;
+  fill: #aaa9ec;
 }
 
 .compound-family-supplement circle,
 .compound-family-supplement {
-  fill: #4d9270;
+  fill: #9bd0ad;
 }
 
 .compound-family-other_drug circle,
 .compound-family-other_drug {
-  fill: #8b6f58;
+  fill: #d3b9a3;
+}
+
+.compound-family-lifestyle {
+  fill: #ddd39d;
+}
+
+.compound-family-unclear {
+  fill: #b8c0ca;
 }
 
 .network-detail h3 {

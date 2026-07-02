@@ -229,6 +229,58 @@ function networkFamilyClass(family) {
   return `compound-family-${String(family || "unclear").replace(/[^a-z0-9_-]/gi, "-").toLowerCase()}`;
 }
 
+const COMPOUND_COLORS = {
+  reta: "#8fcdb6",
+  tirz: "#8bbde8",
+  sema: "#efb189",
+  amylin: "#c8abe4",
+  glp1_other: "#9fd6d5",
+  stimulant: "#f2a5c5",
+  diabetes_drug: "#cadb91",
+  hormone: "#e8c18f",
+  peptide: "#aaa9ec",
+  supplement: "#9bd0ad",
+  other_drug: "#d3b9a3",
+  lifestyle: "#ddd39d",
+  unclear: "#b8c0ca",
+};
+
+function compoundColor(family) {
+  return COMPOUND_COLORS[family] || COMPOUND_COLORS.unclear;
+}
+
+function polarPoint(cx, cy, radius, angle) {
+  return {
+    x: cx + Math.cos(angle) * radius,
+    y: cy + Math.sin(angle) * radius,
+  };
+}
+
+function arcPath(cx, cy, radius, startAngle, endAngle) {
+  const start = polarPoint(cx, cy, radius, startAngle);
+  const end = polarPoint(cx, cy, radius, endAngle);
+  const largeArc = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
+  return `M${start.x.toFixed(2)},${start.y.toFixed(2)} A${radius},${radius} 0 ${largeArc} 1 ${end.x.toFixed(2)},${end.y.toFixed(2)}`;
+}
+
+function radialTextTransform(cx, cy, radius, angle) {
+  const point = polarPoint(cx, cy, radius, angle);
+  let rotation = angle * 180 / Math.PI + 90;
+  if (angle > Math.PI / 2 && angle < Math.PI * 1.5) rotation += 180;
+  return {
+    x: point.x,
+    y: point.y,
+    transform: `rotate(${rotation.toFixed(2)} ${point.x.toFixed(2)} ${point.y.toFixed(2)})`,
+  };
+}
+
+function tickStep(maxValue) {
+  if (maxValue >= 40) return 10;
+  if (maxValue >= 18) return 5;
+  if (maxValue >= 8) return 2;
+  return 1;
+}
+
 function attributionText(counts) {
   return Object.entries(counts || {})
     .sort((a, b) => b[1] - a[1])
@@ -349,39 +401,123 @@ function renderConcurrent(data, mode = "all") {
   renderNormalizationAudit(data);
   if (!nodes.length || !links.length) {
     status.textContent = "No concurrent-use reports available for this mode.";
-    svg.setAttribute("viewBox", "0 0 900 680");
+    svg.setAttribute("viewBox", "0 0 980 820");
     return;
   }
   status.textContent = `${data.summary?.reports || 0} reports, ${nodes.length} compounds, ${links.length} connections shown (${mode === "stack" ? "stack-only" : "all concurrent mentions"}).`;
 
-  const width = 940;
-  const height = 700;
+  const width = 980;
+  const height = 820;
   const cx = width / 2;
   const cy = height / 2;
-  const radius = 265;
+  const arcRadius = 295;
+  const ribbonRadius = 246;
+  const labelRadius = 365;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
+  svg.appendChild(el("circle", { cx, cy, r: ribbonRadius - 24, class: "network-core" }));
+
+  const nodeCounts = nodes.map((node) => Math.max(1, Number(node[countKey] || 0)));
+  const totalCount = nodeCounts.reduce((sum, value) => sum + value, 0);
+  const gap = nodes.length > 14 ? 0.032 : 0.048;
+  const usableAngle = Math.PI * 2 - gap * nodes.length;
+  const minSpan = Math.min(0.09, usableAngle / nodes.length * 0.35);
+  const weightedAngle = Math.max(0.1, usableAngle - minSpan * nodes.length);
+  let cursor = -Math.PI / 2;
   const positions = new Map();
   nodes.forEach((node, index) => {
-    const angle = -Math.PI / 2 + (index / nodes.length) * Math.PI * 2;
+    const count = nodeCounts[index];
+    const span = minSpan + weightedAngle * (count / totalCount);
+    const startAngle = cursor + gap / 2;
+    const endAngle = cursor + span - gap / 2;
+    const angle = (startAngle + endAngle) / 2;
+    const ribbonPoint = polarPoint(cx, cy, ribbonRadius, angle);
     positions.set(node.id, {
-      x: cx + Math.cos(angle) * radius,
-      y: cy + Math.sin(angle) * radius,
+      x: ribbonPoint.x,
+      y: ribbonPoint.y,
       angle,
+      startAngle,
+      endAngle,
+      span,
     });
+    cursor += span;
   });
+
+  const arcLayer = el("g", { class: "network-arcs" });
+  nodes.forEach((node) => {
+    const position = positions.get(node.id);
+    const count = Number(node[countKey] || 0);
+    const color = compoundColor(node.family);
+    const arc = el("path", {
+      d: arcPath(cx, cy, arcRadius, position.startAngle, position.endAngle),
+      class: "network-arc",
+      style: `stroke:${color}`,
+      tabindex: 0,
+    });
+    arc.appendChild(el("title", {}, `${node.label}: ${count} reports`));
+    arc.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
+    arc.addEventListener("mouseenter", () => renderNetworkNodeDetail(node, data, mode));
+    arc.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
+    arcLayer.appendChild(arc);
+
+    const step = tickStep(count);
+    const tickValues = new Set([0, count]);
+    if (count >= step * 2) {
+      for (let value = step; value < count; value += step) {
+        tickValues.add(value);
+      }
+    }
+    [...tickValues].sort((a, b) => a - b).forEach((value) => {
+      const valueAngle = position.startAngle + (position.endAngle - position.startAngle) * (count ? value / count : 0);
+      const inner = polarPoint(cx, cy, arcRadius + 17, valueAngle);
+      const outer = polarPoint(cx, cy, arcRadius + (value === 0 || value === count ? 30 : 24), valueAngle);
+      arcLayer.appendChild(el("line", {
+        x1: inner.x.toFixed(2),
+        y1: inner.y.toFixed(2),
+        x2: outer.x.toFixed(2),
+        y2: outer.y.toFixed(2),
+        class: "network-tick",
+      }));
+      if (value === 0 || value === count) {
+        const label = radialTextTransform(cx, cy, arcRadius + 42, valueAngle);
+        arcLayer.appendChild(el("text", {
+          x: label.x.toFixed(2),
+          y: label.y.toFixed(2),
+          transform: label.transform,
+          "text-anchor": "middle",
+          class: "network-tick-label",
+        }, String(value)));
+      }
+    });
+
+    const labelPosition = radialTextTransform(cx, cy, labelRadius, position.angle);
+    arcLayer.appendChild(el("text", {
+      x: labelPosition.x.toFixed(2),
+      y: labelPosition.y.toFixed(2),
+      transform: labelPosition.transform,
+      "text-anchor": "middle",
+      class: "network-radial-label",
+    }, node.label));
+  });
+  svg.appendChild(arcLayer);
 
   const maxLink = Math.max(...links.map((link) => Number(link[countKey] || 0)));
   const edgeLayer = el("g", { class: "network-edges" });
-  links.forEach((link) => {
+  links
+    .slice()
+    .sort((a, b) => Number(a[countKey] || 0) - Number(b[countKey] || 0))
+    .forEach((link) => {
     const source = positions.get(link.source);
     const target = positions.get(link.target);
     if (!source || !target) return;
     const count = Number(link[countKey] || 0);
+    const sourceNode = nodes.find((node) => node.id === link.source);
+    const color = compoundColor(sourceNode?.family);
     const path = el("path", {
-      d: `M${source.x.toFixed(2)},${source.y.toFixed(2)} Q${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`,
+      d: `M${source.x.toFixed(2)},${source.y.toFixed(2)} C${cx.toFixed(2)},${cy.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`,
       class: "network-edge",
-      "stroke-width": (1.2 + Math.sqrt(count / maxLink) * 7).toFixed(2),
+      style: `stroke:${color}`,
+      "stroke-width": (1.8 + Math.sqrt(count / maxLink) * 18).toFixed(2),
       tabindex: 0,
     });
     path.appendChild(el("title", {}, `${link.source} + ${link.target}: ${count} reports`));
@@ -391,29 +527,6 @@ function renderConcurrent(data, mode = "all") {
     edgeLayer.appendChild(path);
   });
   svg.appendChild(edgeLayer);
-
-  const maxNode = Math.max(...nodes.map((node) => Number(node[countKey] || 0)));
-  const nodeLayer = el("g", { class: "network-nodes" });
-  nodes.forEach((node) => {
-    const position = positions.get(node.id);
-    const count = Number(node[countKey] || 0);
-    const nodeRadius = 8 + Math.sqrt(count / maxNode) * 14;
-    const group = el("g", { class: `network-node ${networkFamilyClass(node.family)}`, tabindex: 0 });
-    const circle = el("circle", { cx: position.x, cy: position.y, r: nodeRadius.toFixed(2) });
-    const labelRadius = radius + 34;
-    const lx = cx + Math.cos(position.angle) * labelRadius;
-    const ly = cy + Math.sin(position.angle) * labelRadius;
-    const anchor = Math.cos(position.angle) > 0.18 ? "start" : Math.cos(position.angle) < -0.18 ? "end" : "middle";
-    const label = el("text", { x: lx.toFixed(2), y: ly.toFixed(2), "text-anchor": anchor }, node.label);
-    group.appendChild(circle);
-    group.appendChild(label);
-    group.appendChild(el("title", {}, `${node.label}: ${count} reports`));
-    group.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
-    group.addEventListener("mouseenter", () => renderNetworkNodeDetail(node, data, mode));
-    group.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
-    nodeLayer.appendChild(group);
-  });
-  svg.appendChild(nodeLayer);
 
   const legendItems = [
     ["reta", "Retatrutide"],
@@ -427,7 +540,7 @@ function renderConcurrent(data, mode = "all") {
   const legend = el("g", { class: "network-legend" });
   legendItems.forEach(([family, label], index) => {
     const y = 26 + index * 22;
-    legend.appendChild(el("circle", { cx: 24, cy: y, r: 6, class: networkFamilyClass(family) }));
+    legend.appendChild(el("rect", { x: 16, y: y - 7, width: 16, height: 10, rx: 2, class: networkFamilyClass(family), style: `fill:${compoundColor(family)}` }));
     legend.appendChild(el("text", { x: 38, y: y + 4 }, label));
   });
   svg.appendChild(legend);
