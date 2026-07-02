@@ -910,13 +910,6 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
       <div id="effect-feed" class="effect-feed"></div>
       <div id="effect-feed-sentinel" class="feed-sentinel"></div>
     </section>
-    <section class="table-section">
-      <h2>Counts</h2>
-      <table>
-        <thead><tr><th>Phrase</th><th>Reports</th><th>Mild</th><th>Moderate</th><th>Severe</th><th>Unscreened</th></tr></thead>
-        <tbody id="effect-table"></tbody>
-      </table>
-    </section>
   </main>
   <script src="../assets/app.js"></script>
 </body>

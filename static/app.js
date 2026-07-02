@@ -199,7 +199,6 @@ function renderSideEffects(data) {
   const feed = document.getElementById("effect-feed");
   const feedCount = document.getElementById("effect-feed-count");
   const sentinel = document.getElementById("effect-feed-sentinel");
-  const table = document.getElementById("effect-table");
   const status = document.getElementById("effect-status");
   const search = document.getElementById("effect-search");
   let selectedEffect = effects[0]?.phrase || null;
@@ -267,10 +266,6 @@ function renderSideEffects(data) {
 
   function severityBadge(severity) {
     return `<span class="severity-badge severity-${htmlEscape(severity)}">${htmlEscape(severity)}</span>`;
-  }
-
-  function titleCase(value) {
-    return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
   }
 
   function effectFrequencyCount(effect) {
@@ -540,41 +535,11 @@ function renderSideEffects(data) {
     }
   }
 
-  function renderTable() {
-    table.innerHTML = "";
-    const countHeader = table.closest("table")?.querySelector("thead th:nth-child(2)");
-    if (countHeader) {
-      countHeader.textContent = selectedSeverity === "all" ? "Reports" : `${titleCase(selectedSeverity)} reports`;
-    }
-    const rows = frequencyEffects();
-    rows.forEach((item) => {
-      const counts = item.severity_counts || {};
-      const tr = document.createElement("tr");
-      tr.className = activeEffects().includes(item.phrase) ? "selected-row" : "";
-      tr.innerHTML = `
-        <td><button type="button" class="table-link">${htmlEscape(item.phrase)}</button></td>
-        <td>${item.active_count}</td>
-        <td>${counts.mild || 0}</td>
-        <td>${counts.moderate || 0}</td>
-        <td>${counts.severe || 0}</td>
-        <td>${counts.unscreened || 0}</td>
-      `;
-      tr.querySelector("button").addEventListener("click", () => {
-        selectedEffect = item.phrase;
-        selectedPair = null;
-        visibleReports = 18;
-        renderAll();
-      });
-      table.appendChild(tr);
-    });
-  }
-
   function renderAll() {
     if (!effects.length) {
       status.textContent = "No side effects extracted yet.";
       bars.innerHTML = "";
       network.innerHTML = "";
-      table.innerHTML = "";
       feed.innerHTML = "";
       detail.innerHTML = "<h2>Effect detail</h2>";
       return;
@@ -586,7 +551,6 @@ function renderSideEffects(data) {
     renderEffectNetwork();
     renderDetailPanel(filteredReports);
     renderFeed(filteredReports);
-    renderTable();
   }
 
   search?.addEventListener("input", () => {
