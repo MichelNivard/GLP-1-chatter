@@ -887,10 +887,10 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
     <section class="effect-story">
       <div class="effect-hero-panel">
         <div>
-          <h2>Effect cloud</h2>
+          <h2>Frequency</h2>
           <p id="effect-status" class="status">Loading side effects...</p>
         </div>
-        <div id="effect-cloud" class="effect-cloud effect-cloud-large"></div>
+        <div id="effect-bars" class="effect-bars effect-bars-large"></div>
       </div>
     </section>
     <section class="side-effect-grid">

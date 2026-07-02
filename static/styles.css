@@ -562,6 +562,33 @@ dd {
   width: 100%;
 }
 
+.effect-bars-large {
+  gap: 0.35rem;
+}
+
+.effect-bar-row {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.28rem 0.45rem;
+  text-align: left;
+}
+
+.effect-bar-row:hover,
+.effect-bar-row:focus,
+.effect-bar-row.active {
+  background: #f2f7f8;
+  border-color: #cbdde4;
+  outline: none;
+}
+
+.effect-bar-row .bar-fill {
+  background: #7fb6cf;
+}
+
 .severity-controls {
   justify-content: flex-end;
   margin: 0;
@@ -638,14 +665,70 @@ dd {
 }
 
 .effect-network-card {
-  min-height: 520px;
+  min-height: 730px;
   padding: 1rem;
 }
 
 .effect-network {
   display: block;
-  min-height: 470px;
+  min-height: 680px;
   width: 100%;
+}
+
+.effect-core {
+  fill: #fffefa;
+  opacity: 0.76;
+}
+
+.effect-chord-edge {
+  fill: none;
+  opacity: 0.35;
+  stroke-linecap: round;
+  cursor: pointer;
+}
+
+.effect-chord-edge:hover,
+.effect-chord-edge:focus,
+.effect-chord-edge.active {
+  opacity: 0.74;
+  outline: none;
+}
+
+.effect-chord-hit {
+  cursor: pointer;
+  fill: none;
+  opacity: 1;
+  pointer-events: bounding-box;
+  stroke: rgba(0, 0, 0, 0.001);
+}
+
+.effect-chord-hit:focus {
+  outline: none;
+}
+
+.effect-chord-arc {
+  fill: none;
+  stroke-linecap: butt;
+  stroke-width: 18;
+  cursor: pointer;
+  filter: drop-shadow(0 5px 10px rgba(31, 36, 40, 0.06));
+}
+
+.effect-chord-arc:hover,
+.effect-chord-arc:focus,
+.effect-chord-arc.active {
+  opacity: 0.76;
+  outline: none;
+}
+
+.effect-chord-label {
+  fill: var(--ink);
+  font-size: 10px;
+  font-weight: 740;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-linejoin: round;
+  stroke-width: 4px;
 }
 
 .effect-edge {

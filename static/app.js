@@ -193,7 +193,7 @@ function renderSideEffects(data) {
   const explorer = data.side_effect_explorer || {};
   const effects = explorer.effects || data.side_effects || [];
   const reports = explorer.reports || {};
-  const cloud = document.getElementById("effect-cloud");
+  const bars = document.getElementById("effect-bars");
   const network = document.getElementById("effect-network");
   const detail = document.getElementById("effect-detail");
   const feed = document.getElementById("effect-feed");
@@ -203,10 +203,12 @@ function renderSideEffects(data) {
   const status = document.getElementById("effect-status");
   const search = document.getElementById("effect-search");
   let selectedEffect = effects[0]?.phrase || null;
+  let selectedPair = null;
   let selectedSeverity = "all";
   let query = "";
   let visibleReports = 18;
   let observer = null;
+  const graphEffectLimit = 72;
 
   function reportForId(id) {
     return reports[String(id)] || reports[id];
@@ -220,14 +222,33 @@ function renderSideEffects(data) {
     return report?.severity_by_effect?.[effect]?.source || "not_llm_screened";
   }
 
-  function selectedReports() {
-    if (!selectedEffect) return [];
+  function activeEffects() {
+    if (selectedPair) return [selectedPair.source, selectedPair.target];
+    return selectedEffect ? [selectedEffect] : [];
+  }
+
+  function selectionLabel() {
+    if (selectedPair) return `${selectedPair.source} + ${selectedPair.target}`;
+    return selectedEffect || "side effects";
+  }
+
+  function activeReportIds() {
+    if (selectedPair) return selectedPair.report_ids || [];
     const effect = effects.find((item) => item.phrase === selectedEffect);
+    return effect?.report_ids || [];
+  }
+
+  function severityMatches(report) {
+    if (selectedSeverity === "all") return true;
+    return activeEffects().some((effect) => severityFor(report, effect) === selectedSeverity);
+  }
+
+  function selectedReports() {
     const q = query.trim().toLowerCase();
-    return (effect?.report_ids || [])
+    return activeReportIds()
       .map(reportForId)
       .filter(Boolean)
-      .filter((report) => selectedSeverity === "all" || severityFor(report, selectedEffect) === selectedSeverity)
+      .filter(severityMatches)
       .filter((report) => {
         if (!q) return true;
         const haystack = [
@@ -248,83 +269,175 @@ function renderSideEffects(data) {
     return `<span class="severity-badge severity-${htmlEscape(severity)}">${htmlEscape(severity)}</span>`;
   }
 
-  function renderCloud() {
-    cloud.innerHTML = "";
+  function effectColor(index) {
+    const palette = [
+      "#8bbde8", "#efb189", "#8fcdb6", "#c8abe4", "#f2a5c5", "#cadb91",
+      "#9fd6d5", "#e8c18f", "#aaa9ec", "#9bd0ad", "#d3b9a3", "#b8c0ca",
+    ];
+    return palette[index % palette.length];
+  }
+
+  function graphEffects() {
+    const names = new Set();
+    effects.slice(0, graphEffectLimit).forEach((item) => names.add(item.phrase));
+    return effects.filter((item) => names.has(item.phrase));
+  }
+
+  function renderBars() {
+    bars.innerHTML = "";
     if (!effects.length) return;
     const max = Math.max(...effects.map((item) => item.count));
-    effects.slice(0, 80).forEach((item) => {
-      const token = document.createElement("button");
-      token.type = "button";
-      token.className = `effect-token${item.phrase === selectedEffect ? " active" : ""}`;
-      token.style.fontSize = `${0.9 + (item.count / max) * 1.85}rem`;
-      token.innerHTML = `<span>${htmlEscape(item.phrase)}</span><strong>${item.count}</strong>`;
-      token.addEventListener("click", () => {
+    effects.slice(0, 18).forEach((item) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = `bar-row effect-bar-row${!selectedPair && item.phrase === selectedEffect ? " active" : ""}`;
+      row.innerHTML = `
+        <span>${htmlEscape(item.phrase)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, item.count / max * 100)}%"></div></div>
+        <strong>${item.count}</strong>
+      `;
+      row.addEventListener("click", () => {
         selectedEffect = item.phrase;
+        selectedPair = null;
         visibleReports = 18;
         renderAll();
       });
-      cloud.appendChild(token);
+      bars.appendChild(row);
     });
   }
 
   function renderEffectNetwork() {
     network.innerHTML = "";
-    if (!selectedEffect) {
-      network.setAttribute("viewBox", "0 0 760 520");
+    const nodes = graphEffects().map((item, index) => ({ ...item, index }));
+    if (!nodes.length) {
+      network.setAttribute("viewBox", "0 0 900 720");
       return;
     }
-    const width = 760;
-    const height = 540;
+    const width = 960;
+    const height = 760;
     const cx = width / 2;
     const cy = height / 2;
-    const radius = 196;
+    const arcRadius = 270;
+    const ribbonRadius = 226;
+    const labelRadius = 333;
     network.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    const links = (explorer.links || [])
-      .filter((link) => link.source === selectedEffect || link.target === selectedEffect)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 18);
-    const maxCount = Math.max(1, ...links.map((link) => Number(link.count || 0)));
-    const center = el("g", { class: "effect-node effect-node-center", tabindex: 0 });
-    center.appendChild(el("circle", { cx, cy, r: 52 }));
-    center.appendChild(el("text", { x: cx, y: cy - 5, "text-anchor": "middle" }, selectedEffect));
-    center.appendChild(el("text", { x: cx, y: cy + 17, "text-anchor": "middle", class: "effect-node-count" }, `${selectedReports().length} reports`));
-    network.appendChild(center);
 
-    links.forEach((link, index) => {
-      const other = link.source === selectedEffect ? link.target : link.source;
-      const angle = -Math.PI / 2 + (index / Math.max(1, links.length)) * Math.PI * 2;
-      const x = cx + Math.cos(angle) * radius;
-      const y = cy + Math.sin(angle) * radius;
-      const edge = el("line", {
-        x1: cx,
-        y1: cy,
-        x2: x,
-        y2: y,
-        class: "effect-edge",
-        "stroke-width": (1.5 + Math.sqrt(link.count / maxCount) * 9).toFixed(2),
-      });
-      edge.appendChild(el("title", {}, `${selectedEffect} + ${other}: ${link.count} reports`));
-      network.insertBefore(edge, center);
+    const nodeMap = new Map(nodes.map((item) => [item.phrase, item]));
+    const visibleLinks = (explorer.links || [])
+      .filter((link) => nodeMap.has(link.source) && nodeMap.has(link.target))
+      .sort((a, b) => Number(a.count || 0) - Number(b.count || 0));
+    const maxLink = Math.max(1, ...visibleLinks.map((link) => Number(link.count || 0)));
+    const total = nodes.reduce((sum, item) => sum + Math.max(1, Number(item.count || 0)), 0);
+    const gap = nodes.length > 50 ? 0.012 : 0.02;
+    const usableAngle = Math.PI * 2 - gap * nodes.length;
+    const minSpan = Math.min(0.045, usableAngle / nodes.length * 0.4);
+    const weightedAngle = Math.max(0.1, usableAngle - minSpan * nodes.length);
+    let cursor = -Math.PI / 2;
+    const positions = new Map();
 
-      const group = el("g", { class: "effect-node", tabindex: 0 });
-      group.appendChild(el("circle", { cx: x.toFixed(2), cy: y.toFixed(2), r: (16 + Math.sqrt(link.count / maxCount) * 15).toFixed(2) }));
-      group.appendChild(el("text", { x: x.toFixed(2), y: (y + 4).toFixed(2), "text-anchor": "middle" }, other));
-      group.appendChild(el("title", {}, `${other}: ${link.count} co-mentions`));
-      group.addEventListener("click", () => {
-        selectedEffect = other;
-        visibleReports = 18;
-        renderAll();
-      });
-      group.addEventListener("focus", () => {
-        selectedEffect = other;
-        visibleReports = 18;
-        renderAll();
-      });
-      network.appendChild(group);
+    nodes.forEach((node) => {
+      const count = Math.max(1, Number(node.count || 0));
+      const span = minSpan + weightedAngle * (count / total);
+      const startAngle = cursor + gap / 2;
+      const endAngle = cursor + span - gap / 2;
+      const angle = (startAngle + endAngle) / 2;
+      const point = polarPoint(cx, cy, ribbonRadius, angle);
+      positions.set(node.phrase, { x: point.x, y: point.y, angle, startAngle, endAngle, span });
+      cursor += span;
     });
+
+    network.appendChild(el("circle", { cx, cy, r: ribbonRadius - 24, class: "effect-core" }));
+
+    const edgeLayer = el("g", { class: "effect-chord-edges" });
+    visibleLinks.forEach((link) => {
+      const source = positions.get(link.source);
+      const target = positions.get(link.target);
+      if (!source || !target) return;
+      const sourceNode = nodeMap.get(link.source);
+      const color = effectColor(sourceNode.index);
+      const active = selectedPair && selectedPair.source === link.source && selectedPair.target === link.target;
+      const d = `M${source.x.toFixed(2)},${source.y.toFixed(2)} C${cx.toFixed(2)},${cy.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`;
+      const strokeWidth = 1.2 + Math.sqrt(Number(link.count || 0) / maxLink) * 15;
+      const selectPair = () => {
+        selectedPair = { source: link.source, target: link.target, report_ids: link.report_ids || [] };
+        selectedEffect = link.source;
+        visibleReports = 18;
+        renderAll();
+      };
+      const path = el("path", {
+        d,
+        class: `effect-chord-edge${active ? " active" : ""}`,
+        style: `stroke:${color}`,
+        "stroke-width": strokeWidth.toFixed(2),
+      });
+      const hitPath = el("path", {
+        d,
+        class: "effect-chord-hit",
+        "stroke-width": Math.max(14, strokeWidth + 10).toFixed(2),
+        tabindex: 0,
+      });
+      hitPath.appendChild(el("title", {}, `${link.source} + ${link.target}: ${link.count} reports`));
+      hitPath.addEventListener("click", selectPair);
+      hitPath.addEventListener("focus", selectPair);
+      edgeLayer.appendChild(path);
+      edgeLayer.appendChild(hitPath);
+    });
+    network.appendChild(edgeLayer);
+
+    const arcLayer = el("g", { class: "effect-chord-arcs" });
+    nodes.forEach((node) => {
+      const position = positions.get(node.phrase);
+      const color = effectColor(node.index);
+      const active = !selectedPair && selectedEffect === node.phrase;
+      const arc = el("path", {
+        d: arcPath(cx, cy, arcRadius, position.startAngle, position.endAngle),
+        class: `effect-chord-arc${active ? " active" : ""}`,
+        style: `stroke:${color}`,
+        tabindex: 0,
+      });
+      arc.appendChild(el("title", {}, `${node.phrase}: ${node.count} reports`));
+      arc.addEventListener("click", () => {
+        selectedEffect = node.phrase;
+        selectedPair = null;
+        visibleReports = 18;
+        renderAll();
+      });
+      arc.addEventListener("focus", () => {
+        selectedEffect = node.phrase;
+        selectedPair = null;
+        visibleReports = 18;
+        renderAll();
+      });
+      arcLayer.appendChild(arc);
+
+      const labelPosition = radialTextTransform(cx, cy, labelRadius, position.angle);
+      const label = node.phrase.length > 26 ? `${node.phrase.slice(0, 24)}...` : node.phrase;
+      arcLayer.appendChild(el("text", {
+        x: labelPosition.x.toFixed(2),
+        y: labelPosition.y.toFixed(2),
+        transform: labelPosition.transform,
+        "text-anchor": "middle",
+        class: "effect-chord-label",
+      }, label));
+    });
+    network.appendChild(arcLayer);
   }
 
   function renderDetailPanel(filteredReports) {
+    if (selectedPair) {
+      const reportsWithPair = selectedPair.report_ids?.length || 0;
+      detail.innerHTML = `
+        <h2>${htmlEscape(selectionLabel())}</h2>
+        <dl class="detail-list">
+          <div><dt>Co-occurrence reports</dt><dd>${reportsWithPair}</dd></div>
+          <div><dt>Visible reports</dt><dd>${filteredReports.length}</dd></div>
+          <div><dt>Side effect 1</dt><dd>${htmlEscape(selectedPair.source)}</dd></div>
+          <div><dt>Side effect 2</dt><dd>${htmlEscape(selectedPair.target)}</dd></div>
+        </dl>
+        <p class="note">Path selections show reports where both side effects were extracted from the same Reddit item.</p>
+      `;
+      return;
+    }
     const effect = effects.find((item) => item.phrase === selectedEffect);
     if (!effect) {
       detail.innerHTML = "<h2>Effect detail</h2><p>No side effects extracted yet.</p>";
@@ -353,9 +466,10 @@ function renderSideEffects(data) {
   }
 
   function reportCard(report) {
-    const severity = severityFor(report, selectedEffect);
+    const primaryEffect = activeEffects()[0] || selectedEffect;
+    const severity = severityFor(report, primaryEffect);
     const effectsHtml = (report.effects || [])
-      .map((effect) => `<button type="button" class="effect-chip${effect === selectedEffect ? " active" : ""}" data-effect="${htmlEscape(effect)}">${htmlEscape(effect)}</button>`)
+      .map((effect) => `<button type="button" class="effect-chip${activeEffects().includes(effect) ? " active" : ""}" data-effect="${htmlEscape(effect)}">${htmlEscape(effect)}</button>`)
       .join("");
     return `
       <article class="effect-report-card">
@@ -366,7 +480,7 @@ function renderSideEffects(data) {
         <p><strong>${htmlEscape(report.drug_name_mentioned || report.drug_family || "unknown drug")}</strong> ${htmlEscape(report.dose_strong || "")}</p>
         <div class="effect-chip-row">${effectsHtml}</div>
         <dl class="detail-list compact">
-          <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, selectedEffect))}</dd></div>
+          <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, primaryEffect))}</dd></div>
           <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
           <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
           <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
@@ -385,6 +499,7 @@ function renderSideEffects(data) {
     feed.querySelectorAll("[data-effect]").forEach((button) => {
       button.addEventListener("click", () => {
         selectedEffect = button.dataset.effect;
+        selectedPair = null;
         visibleReports = 18;
         renderAll();
       });
@@ -392,7 +507,7 @@ function renderSideEffects(data) {
   }
 
   function renderFeed(filteredReports) {
-    feedCount.textContent = selectedEffect ? `${filteredReports.length} matching reports for "${selectedEffect}"` : "";
+    feedCount.textContent = `${filteredReports.length} matching reports for "${selectionLabel()}"`;
     const visible = filteredReports.slice(0, visibleReports);
     feed.innerHTML = visible.map(reportCard).join("") || '<p class="status">No reports match the current filters.</p>';
     bindReportChips();
@@ -409,7 +524,7 @@ function renderSideEffects(data) {
     effects.forEach((item) => {
       const counts = item.severity_counts || {};
       const tr = document.createElement("tr");
-      tr.className = item.phrase === selectedEffect ? "selected-row" : "";
+      tr.className = activeEffects().includes(item.phrase) ? "selected-row" : "";
       tr.innerHTML = `
         <td><button type="button" class="table-link">${htmlEscape(item.phrase)}</button></td>
         <td>${item.count}</td>
@@ -420,6 +535,7 @@ function renderSideEffects(data) {
       `;
       tr.querySelector("button").addEventListener("click", () => {
         selectedEffect = item.phrase;
+        selectedPair = null;
         visibleReports = 18;
         renderAll();
       });
@@ -430,7 +546,7 @@ function renderSideEffects(data) {
   function renderAll() {
     if (!effects.length) {
       status.textContent = "No side effects extracted yet.";
-      cloud.innerHTML = "";
+      bars.innerHTML = "";
       network.innerHTML = "";
       table.innerHTML = "";
       feed.innerHTML = "";
@@ -439,7 +555,7 @@ function renderSideEffects(data) {
     }
     const filteredReports = selectedReports();
     status.textContent = `${explorer.summary?.reports_with_side_effects || Object.keys(reports).length} reports with side-effect mentions, ${effects.length} normalized phrases.`;
-    renderCloud();
+    renderBars();
     renderEffectNetwork();
     renderDetailPanel(filteredReports);
     renderFeed(filteredReports);
