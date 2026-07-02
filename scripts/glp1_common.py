@@ -13,7 +13,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "data" / "glp1_reports.sqlite3"
-PROMPT_VERSION = "2026-07-01-v1"
+PROMPT_VERSION = "2026-07-02-v2"
 
 DRUG_FAMILIES = ("reta", "tirz", "sema")
 ALL_DRUG_FAMILIES = ("reta", "tirz", "sema", "other", "unclear")

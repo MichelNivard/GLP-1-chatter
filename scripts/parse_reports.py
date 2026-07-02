@@ -38,7 +38,8 @@ RESCREEN_WARNING = (
     "or because the extracted report shows notable weight gain. "
     "Carefully check whether the loss/gain/duration is truly attributable to the focal drug, "
     "or whether it belongs to prior Tirz/Sema/Ozempic/Wegovy/Mounjaro/Zepbound history, "
-    "total GLP journey, age, goal weight, dose, or another confound."
+    "total GLP journey, pregnancy/postpartum weight change, historical peak weight, age, "
+    "goal weight, dose, or another confound."
 )
 
 REPORT_REQUIRED_FIELDS = [
@@ -192,6 +193,31 @@ def parse_args() -> argparse.Namespace:
             "the current rescreen thresholds as pending for one mini-model rescreen."
         ),
     )
+    parser.add_argument(
+        "--queue-weight-gain-rescreens",
+        action="store_true",
+        help=(
+            "Before parsing, mark already-parsed rows with positive canonical weight_change_kg "
+            "as pending for a fresh mini-model rescreen. This is intended for one-time cleanup "
+            "after prompt changes."
+        ),
+    )
+    parser.add_argument(
+        "--weight-gain-rescreen-threshold-kg",
+        type=float,
+        default=0.0,
+        help="Minimum positive canonical weight_change_kg to queue with --queue-weight-gain-rescreens.",
+    )
+    parser.add_argument(
+        "--force-rescreen-cache",
+        action="store_true",
+        help="For rescreen passes, call the API instead of reusing an existing local rescreen cache row.",
+    )
+    parser.add_argument(
+        "--rescreen-only",
+        action="store_true",
+        help="Only process parsed rows with rescreen_status=pending; do not parse raw pending rows.",
+    )
     return parser.parse_args()
 
 
@@ -344,7 +370,26 @@ def validate_extraction(result: dict[str, Any]) -> None:
             raise ValueError(f"reports[{index}] confidence is outside 0..1")
 
 
-def select_rows(conn: sqlite3.Connection, limit: int, retry_errors: bool) -> list[sqlite3.Row]:
+def select_rows(
+    conn: sqlite3.Connection,
+    limit: int,
+    retry_errors: bool,
+    *,
+    rescreen_only: bool = False,
+) -> list[sqlite3.Row]:
+    if rescreen_only:
+        query = """
+            SELECT *
+            FROM raw_posts
+            WHERE parse_status = 'parsed'
+              AND rescreen_status = 'pending'
+            ORDER BY COALESCE(created_utc, 0) DESC, post_id DESC
+        """
+        if limit:
+            query += " LIMIT ?"
+            return list(conn.execute(query, (limit,)).fetchall())
+        return list(conn.execute(query).fetchall())
+
     statuses = ["pending"]
     if retry_errors:
         statuses.append("error")
@@ -410,13 +455,49 @@ def queue_rescreen_flags(conn: sqlite3.Connection, dry_run: bool) -> int:
     return len(flagged_post_ids)
 
 
+def queue_weight_gain_rescreens(conn: sqlite3.Connection, dry_run: bool, threshold_kg: float) -> int:
+    rows = conn.execute(
+        """
+        SELECT DISTINCT p.post_id
+        FROM raw_posts p
+        JOIN extracted_reports r ON r.post_id = p.post_id
+        WHERE p.parse_status = 'parsed'
+          AND r.canonical = 1
+          AND r.weight_change_kg > ?
+        ORDER BY p.post_id
+        """,
+        (threshold_kg,),
+    ).fetchall()
+    post_ids = [int(row["post_id"]) for row in rows]
+    if post_ids and not dry_run:
+        conn.executemany(
+            "UPDATE raw_posts SET rescreen_status = 'pending' WHERE post_id = ?",
+            [(post_id,) for post_id in post_ids],
+        )
+        conn.commit()
+    print(
+        json.dumps(
+            {
+                "dry_run": dry_run,
+                "queue_weight_gain_rescreens": len(post_ids),
+                "threshold_kg": threshold_kg,
+            },
+            sort_keys=True,
+        )
+    )
+    return len(post_ids)
+
+
 def cached_result(
     conn: sqlite3.Connection,
     *,
     content_hash_value: str,
     pass_type: str,
     retry_errors: bool,
+    ignore_cache: bool = False,
 ) -> tuple[dict[str, Any] | None, str | None]:
+    if ignore_cache:
+        return None, None
     cached = cache_lookup(conn, content_hash_value, pass_type)
     if cached is None:
         return None, None
@@ -439,6 +520,7 @@ def run_pass(
     max_output_tokens: int,
     prompt_cache_key_prefix: str | None,
     prompt_cache_retention: str,
+    force_cache_miss: bool = False,
 ) -> tuple[dict[str, Any] | None, str | None, str]:
     if pass_type == "rescreen" and row["processed_content_hash"]:
         content_hash_value = row["processed_content_hash"]
@@ -450,6 +532,7 @@ def run_pass(
         content_hash_value=content_hash_value,
         pass_type=pass_type,
         retry_errors=retry_errors,
+        ignore_cache=force_cache_miss,
     )
     if cached is not None:
         return cached, None, "cache"
@@ -630,6 +713,7 @@ def process_row(conn: sqlite3.Connection, row: sqlite3.Row, args: argparse.Names
         max_output_tokens=args.max_output_tokens,
         prompt_cache_key_prefix=args.prompt_cache_key,
         prompt_cache_retention=args.prompt_cache_retention,
+        force_cache_miss=args.force_rescreen_cache,
     )
     if rescreen_error:
         mark_rescreen(conn, post_id, status="error", model=args.rescreen_model)
@@ -670,7 +754,16 @@ def main() -> int:
     ensure_schema(conn)
     if args.queue_rescreen_flags:
         queue_rescreen_flags(conn, args.dry_run)
-    rows = select_rows(conn, args.limit, args.retry_errors)
+    if args.queue_weight_gain_rescreens:
+        queued_gain_rows = queue_weight_gain_rescreens(
+            conn,
+            args.dry_run,
+            args.weight_gain_rescreen_threshold_kg,
+        )
+        args.rescreen_only = True
+        if queued_gain_rows and not args.dry_run:
+            args.force_rescreen_cache = True
+    rows = select_rows(conn, args.limit, args.retry_errors, rescreen_only=args.rescreen_only)
     if not rows:
         print("no pending rows")
         return 0

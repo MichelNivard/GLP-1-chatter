@@ -116,6 +116,12 @@ To apply a new rescreen boundary to already-parsed nano results, dispatch the pa
 python scripts/parse_reports.py --queue-rescreen-flags --limit 0
 ```
 
+To force a fresh mini rescreen of already-parsed positive weight-change rows after a prompt fix, dispatch the parse workflow with `queue_weight_gain_rescreens=true`, `weight_gain_rescreen_threshold_kg=0`, and `limit=0`, or run:
+
+```bash
+python scripts/parse_reports.py --queue-weight-gain-rescreens --force-rescreen-cache --rescreen-only --limit 0
+```
+
 ## Site Build
 
 ```bash

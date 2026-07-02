@@ -26,6 +26,15 @@ on:
         required: false
         default: "false"
         type: boolean
+      queue_weight_gain_rescreens:
+        description: "Queue positive weight-change reports for fresh mini rescreen"
+        required: false
+        default: "false"
+        type: boolean
+      weight_gain_rescreen_threshold_kg:
+        description: "Minimum positive weight_change_kg to queue"
+        required: false
+        default: "0"
 
 permissions:
   contents: write
@@ -71,6 +80,14 @@ jobs:
           fi
           if [ "${{ github.event.inputs.queue_rescreen_flags || 'false' }}" = "true" ]; then
             args+=(--queue-rescreen-flags)
+          fi
+          if [ "${{ github.event.inputs.queue_weight_gain_rescreens || 'false' }}" = "true" ]; then
+            args+=(
+              --queue-weight-gain-rescreens
+              --force-rescreen-cache
+              --rescreen-only
+              --weight-gain-rescreen-threshold-kg "${{ github.event.inputs.weight_gain_rescreen_threshold_kg || '0' }}"
+            )
           fi
           python scripts/parse_reports.py "${args[@]}"
       - name: Commit parsed database

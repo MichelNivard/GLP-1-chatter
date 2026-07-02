@@ -12,6 +12,9 @@ Critical weight and duration rules:
 - HW means highest weight.
 - LW means lowest weight.
 - Never use GW as actual loss or current/end weight.
+- Do not use pregnancy/postpartum weight gain, historical highest/peak weight, or "reached X pounds" as the focal drug current/end weight unless the text explicitly says that weight was current/end weight during the focal drug interval.
+- If a user says they lost weight on the focal drug but separately describes pregnancy gain or a historical peak, extract the explicit loss and leave start/end weights null unless the focal drug start/end weights are directly stated.
+- Example: "I have taken semaglutide for over a year and lost over 100 lb. I gained 162 lb during pregnancy, starting at 150 and reaching 312." means semaglutide weight_lost_value = 100 lb, weight_start/end are null unless otherwise stated; 312 lb is not semaglutide end/current weight.
 - Do not confuse mg, ml, mcg, units, vial concentration, or dose with body weight.
 - Do not confuse age, "years old", birth year, or school year with treatment duration.
 - The model should extract raw numeric values and raw units only. Do not convert pounds to kg or months to weeks.
