@@ -672,6 +672,42 @@ dd {
   font-size: 0.85rem;
 }
 
+.testimonial {
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  color: var(--ink);
+  margin: 0.85rem 0;
+  padding: 0.85rem 1rem;
+}
+
+.testimonial figcaption {
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.testimonial blockquote {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.02rem;
+  font-style: italic;
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.detail-panel > .testimonial {
+  max-height: 17rem;
+  overflow: auto;
+}
+
 .detail-list.compact {
   gap: 0.35rem;
   font-size: 0.88rem;
@@ -683,9 +719,27 @@ dd {
 
 .reddit-link {
   display: inline-flex;
-  margin: 1rem 0;
+  margin: 0.4rem 0 1rem;
   color: var(--blue);
   font-weight: 700;
+}
+
+.extracted-fields,
+.source-text {
+  border-top: 1px solid var(--line);
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+}
+
+.extracted-fields summary,
+.source-text summary {
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.extracted-fields .detail-list {
+  margin-top: 0.75rem;
 }
 
 .plot-bg {
@@ -802,6 +856,7 @@ dd {
 
 .network-tick {
   stroke: var(--ink);
+  opacity: 0.7;
   stroke-width: 1.2;
 }
 
@@ -813,12 +868,20 @@ dd {
 
 .network-radial-label {
   fill: var(--ink);
-  font-size: 13px;
-  font-weight: 720;
+  font-size: 15px;
+  font-weight: 850;
+  opacity: 0;
   paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.94);
+  pointer-events: none;
+  stroke: rgba(255, 255, 255, 0.98);
   stroke-linejoin: round;
-  stroke-width: 5px;
+  stroke-width: 7px;
+  transition: opacity 0.12s ease;
+}
+
+.network-node-group:hover .network-radial-label,
+.network-node-group:focus-within .network-radial-label {
+  opacity: 1;
 }
 
 .network-edge {
@@ -937,6 +1000,12 @@ dd {
 
 .report-mini p {
   margin-bottom: 0.65rem;
+}
+
+.report-mini .testimonial,
+.effect-report-card .testimonial {
+  max-height: 11rem;
+  overflow: auto;
 }
 
 .excerpt {

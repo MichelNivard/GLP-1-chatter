@@ -89,9 +89,9 @@ def site_header(asset_prefix: str = "", active: str = "overview") -> str:
       </a>
       <nav class="nav" aria-label="Primary">
         {nav_link("Overview", home, "overview", active)}
-        {nav_link("Compare Drugs", f"{home}#compare", "compare", active)}
         {nav_link("Weight Change", f"{home}weight-change/", "weight", active)}
         {nav_link("Side Effects", f"{home}side-effects/", "effects", active)}
+        {nav_link("Stacking/polypharmacy", f"{home}concurrent/", "stacking", active)}
         {nav_link("Methods", f"{home}methods/", "methods", active)}
         {nav_link("Data Status", f"{home}data-status/", "status", active)}
       </nav>
@@ -919,13 +919,13 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
           <h2>{html.escape(FAMILY_NAMES[family])}</h2>
           <p class="aliases">{html.escape(FAMILY_COPY[family]["aliases"])}</p>
         </div>
+        {render_home_mini_plot(family, family_payloads[family])}
         <div class="metrics">
           <div class="metric"><span>Parsed posts</span><strong>{item["parsed_posts"]}</strong></div>
           <div class="metric"><span>Plottable</span><strong>{item["plottable_reports"]}</strong></div>
           <div class="metric"><span>Median weeks</span><strong>{fmt_number(item["median_duration_weeks"])}</strong></div>
           <div class="metric"><span>Median change</span><strong>{fmt_number(item["median_weight_change_kg"])} kg</strong></div>
         </div>
-        {render_home_mini_plot(family, family_payloads[family])}
         {family_action_links(family)}
       </article>
 """
@@ -937,7 +937,7 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
     <section class="hero">
       <div>
         <p class="eyebrow">Drug Comparison Observatory</p>
-        <h1>Compare reported outcomes across three GLP-1 drug families.</h1>
+        <h1>GLP-1 Experiences</h1>
         <p>This static site summarizes structured extractions from Reddit posts and comments mentioning Retatrutide, Tirzepatide, and Semaglutide. It is observational social-media text mining, not medical advice, clinical evidence, or proof of causality.</p>
       </div>
       <aside class="route-panel site-note" aria-label="How to use this site">
@@ -1183,11 +1183,11 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
 def render_concurrent_page(generated_at: str) -> str:
     body = f"""
 <body data-view="concurrent" data-json="../data/concurrent.json">
-  {site_header("../", active="compare")}
+  {site_header("../", active="stacking")}
   <main class="page">
     <section class="page-heading">
       <p class="eyebrow">All drug families</p>
-      <h1>Concurrent-use network</h1>
+      <h1>Stacking/polypharmacy</h1>
       <p>Circular network of normalized compounds mentioned together in parsed Reddit reports. Edges connect compounds appearing in the same extracted report; stack-only mode restricts counts to reports marked as stacks by the parser.</p>
       <p class="meta">Generated {html.escape(generated_at)}</p>
       <div class="page-actions">
@@ -1219,7 +1219,7 @@ def render_concurrent_page(generated_at: str) -> str:
   <script src="../assets/app.js"></script>
 </body>
 """
-    return html_page("Concurrent GLP-1 Use Network", body, asset_prefix="../")
+    return html_page("Stacking/polypharmacy", body, asset_prefix="../")
 
 
 def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str, Any]:

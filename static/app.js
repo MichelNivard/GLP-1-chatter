@@ -37,6 +37,15 @@ function reportDrugLabel(report) {
   return `${name} · mentioned as ${mentioned}`;
 }
 
+function testimonialHtml(text, label = "Qualitative report") {
+  return `
+    <figure class="testimonial">
+      <figcaption>${htmlEscape(label)}</figcaption>
+      <blockquote>&ldquo;${htmlEscape(text || "No Reddit text available.")}&rdquo;</blockquote>
+    </figure>
+  `;
+}
+
 async function loadPageData() {
   const jsonPath = document.body.dataset.json;
   const response = await fetch(jsonPath);
@@ -71,27 +80,29 @@ function renderDetail(point) {
   detail.innerHTML = `
     <h2>${htmlEscape(reportDrugLabel(point))}</h2>
     ${drift}
-    <h3>Original text</h3>
-    <pre>${htmlEscape(point.processed_full_text || point.full_text || "")}</pre>
+    ${testimonialHtml(point.processed_full_text || point.full_text || "", "Qualitative Reddit text")}
     <a class="reddit-link" href="${htmlEscape(point.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
-    <dl class="detail-list">
-      <div><dt>Post date</dt><dd>${htmlEscape(point.created_iso || "n/a")}</dd></div>
-      <div><dt>Subreddit</dt><dd>r/${htmlEscape(point.subreddit)}</dd></div>
-      <div><dt>Drug family</dt><dd>${htmlEscape(familyName(point.drug_family))}</dd></div>
-      <div><dt>Mentioned as</dt><dd>${htmlEscape(point.drug_name_mentioned || "n/a")}</dd></div>
-      <div><dt>Dose</dt><dd>${htmlEscape(point.dose_strong || "n/a")}</dd></div>
-      <div><dt>Duration</dt><dd>${htmlEscape(point.duration_raw || "n/a")} (${fmt(point.duration_weeks, 1, " weeks")})</dd></div>
-      <div><dt>Start</dt><dd>${fmt(point.weight_start_value)} ${htmlEscape(point.weight_start_unit || "")} (${fmt(point.weight_start_kg, 1, " kg")})</dd></div>
-      <div><dt>End</dt><dd>${fmt(point.weight_end_value)} ${htmlEscape(point.weight_end_unit || "")} (${fmt(point.weight_end_kg, 1, " kg")})</dd></div>
-      <div><dt>Lost</dt><dd>${fmt(point.weight_lost_value)} ${htmlEscape(point.weight_lost_unit || "")} (${fmt(point.weight_lost_kg, 1, " kg")})</dd></div>
-      <div><dt>Weight change</dt><dd>${fmt(point.weight_change_kg, 1, " kg")}</dd></div>
-      <div><dt>Attribution</dt><dd>${htmlEscape(point.attribution || "n/a")}</dd></div>
-      <div><dt>Concurrent compounds</dt><dd>${htmlEscape(compounds)}</dd></div>
-      <div><dt>Side effects</dt><dd>${htmlEscape(effects)}</dd></div>
-      <div><dt>Confidence</dt><dd>${fmt(point.confidence, 2)}</dd></div>
-      <div><dt>Evidence</dt><dd>${htmlEscape(point.evidence || "n/a")}</dd></div>
-      <div><dt>Notes</dt><dd>${htmlEscape(point.notes || "n/a")}</dd></div>
-    </dl>
+    <details class="extracted-fields">
+      <summary>Extracted fields</summary>
+      <dl class="detail-list">
+        <div><dt>Post date</dt><dd>${htmlEscape(point.created_iso || "n/a")}</dd></div>
+        <div><dt>Subreddit</dt><dd>r/${htmlEscape(point.subreddit)}</dd></div>
+        <div><dt>Drug family</dt><dd>${htmlEscape(familyName(point.drug_family))}</dd></div>
+        <div><dt>Mentioned as</dt><dd>${htmlEscape(point.drug_name_mentioned || "n/a")}</dd></div>
+        <div><dt>Dose</dt><dd>${htmlEscape(point.dose_strong || "n/a")}</dd></div>
+        <div><dt>Duration</dt><dd>${htmlEscape(point.duration_raw || "n/a")} (${fmt(point.duration_weeks, 1, " weeks")})</dd></div>
+        <div><dt>Start</dt><dd>${fmt(point.weight_start_value)} ${htmlEscape(point.weight_start_unit || "")} (${fmt(point.weight_start_kg, 1, " kg")})</dd></div>
+        <div><dt>End</dt><dd>${fmt(point.weight_end_value)} ${htmlEscape(point.weight_end_unit || "")} (${fmt(point.weight_end_kg, 1, " kg")})</dd></div>
+        <div><dt>Lost</dt><dd>${fmt(point.weight_lost_value)} ${htmlEscape(point.weight_lost_unit || "")} (${fmt(point.weight_lost_kg, 1, " kg")})</dd></div>
+        <div><dt>Weight change</dt><dd>${fmt(point.weight_change_kg, 1, " kg")}</dd></div>
+        <div><dt>Attribution</dt><dd>${htmlEscape(point.attribution || "n/a")}</dd></div>
+        <div><dt>Concurrent compounds</dt><dd>${htmlEscape(compounds)}</dd></div>
+        <div><dt>Side effects</dt><dd>${htmlEscape(effects)}</dd></div>
+        <div><dt>Confidence</dt><dd>${fmt(point.confidence, 2)}</dd></div>
+        <div><dt>Evidence</dt><dd>${htmlEscape(point.evidence || "n/a")}</dd></div>
+        <div><dt>Notes</dt><dd>${htmlEscape(point.notes || "n/a")}</dd></div>
+      </dl>
+    </details>
   `;
 }
 
@@ -522,19 +533,22 @@ function renderSideEffects(data) {
           ${severityBadge(severity)}
         </div>
         <p><strong>${htmlEscape(reportDrugLabel(report))}</strong> ${htmlEscape(report.dose_strong || "")}</p>
-        <div class="effect-chip-row">${effectsHtml}</div>
-        <dl class="detail-list compact">
-          <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, primaryEffect))}</dd></div>
-          <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
-          <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
-          <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
-        </dl>
-        <p class="excerpt">${htmlEscape(report.text_excerpt || "")}</p>
-        <details>
-          <summary>Original Reddit text</summary>
-          <pre>${htmlEscape(report.full_text || "")}</pre>
-        </details>
+        ${testimonialHtml(report.text_excerpt || report.full_text || "", "Qualitative excerpt")}
         <a class="reddit-link" href="${htmlEscape(report.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
+        <div class="effect-chip-row">${effectsHtml}</div>
+        <details class="extracted-fields">
+          <summary>Extracted fields</summary>
+          <dl class="detail-list compact">
+            <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, primaryEffect))}</dd></div>
+            <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
+            <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
+            <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
+          </dl>
+        </details>
+        <details class="source-text">
+          <summary>Full Reddit text</summary>
+          ${testimonialHtml(report.full_text || report.text_excerpt || "", "Full qualitative text")}
+        </details>
       </article>
     `;
   }
@@ -682,17 +696,20 @@ function reportMiniCard(report) {
     <article class="report-mini">
       <h3>${htmlEscape(report.created_iso || "unknown date")} · r/${htmlEscape(report.subreddit || "unknown")}</h3>
       <p><strong>${htmlEscape(reportDrugLabel(report))}</strong> with ${htmlEscape(raw || compounds || "n/a")}</p>
-      <dl class="detail-list compact">
-        <div><dt>Normalized</dt><dd>${htmlEscape(compounds || "n/a")}</dd></div>
-        <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
-        <div><dt>Dose</dt><dd>${htmlEscape(report.dose_strong || "n/a")}</dd></div>
-        <div><dt>Duration</dt><dd>${htmlEscape(report.duration_raw || "n/a")} (${fmt(report.duration_weeks, 1, " weeks")})</dd></div>
-        <div><dt>Weight change</dt><dd>${fmt(report.weight_change_kg, 1, " kg")}</dd></div>
-        <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
-        <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
-      </dl>
-      <p class="excerpt">${htmlEscape(report.text_excerpt || "")}</p>
+      ${testimonialHtml(report.text_excerpt || report.full_text || "", "Qualitative excerpt")}
       <a class="reddit-link" href="${htmlEscape(report.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
+      <details class="extracted-fields">
+        <summary>Extracted fields</summary>
+        <dl class="detail-list compact">
+          <div><dt>Normalized</dt><dd>${htmlEscape(compounds || "n/a")}</dd></div>
+          <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
+          <div><dt>Dose</dt><dd>${htmlEscape(report.dose_strong || "n/a")}</dd></div>
+          <div><dt>Duration</dt><dd>${htmlEscape(report.duration_raw || "n/a")} (${fmt(report.duration_weeks, 1, " weeks")})</dd></div>
+          <div><dt>Weight change</dt><dd>${fmt(report.weight_change_kg, 1, " kg")}</dd></div>
+          <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
+          <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
+        </dl>
+      </details>
     </article>
   `;
 }
@@ -791,7 +808,7 @@ function renderConcurrent(data, mode = "all") {
     svg.setAttribute("viewBox", "0 0 980 820");
     return;
   }
-  status.textContent = `${data.summary?.reports || 0} reports, ${nodes.length} compounds, ${links.length} connections shown (${mode === "stack" ? "stack-only" : "all concurrent mentions"}).`;
+  status.textContent = `${data.summary?.reports || 0} reports, ${nodes.length} compounds, ${links.length} connections shown (${mode === "stack" ? "stack-only" : "all concurrent mentions"}). Hover or focus an outer arc to show its compound name.`;
 
   const width = 980;
   const height = 820;
@@ -835,6 +852,7 @@ function renderConcurrent(data, mode = "all") {
     const position = positions.get(node.id);
     const count = Number(node[countKey] || 0);
     const color = compoundColor(node.family);
+    const group = el("g", { class: "network-node-group" });
     const arc = el("path", {
       d: arcPath(cx, cy, arcRadius, position.startAngle, position.endAngle),
       class: "network-arc",
@@ -845,7 +863,7 @@ function renderConcurrent(data, mode = "all") {
     arc.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
     arc.addEventListener("mouseenter", () => renderNetworkNodeDetail(node, data, mode));
     arc.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
-    arcLayer.appendChild(arc);
+    group.appendChild(arc);
 
     const step = tickStep(count);
     const tickValues = new Set([0, count]);
@@ -858,33 +876,24 @@ function renderConcurrent(data, mode = "all") {
       const valueAngle = position.startAngle + (position.endAngle - position.startAngle) * (count ? value / count : 0);
       const inner = polarPoint(cx, cy, arcRadius + 17, valueAngle);
       const outer = polarPoint(cx, cy, arcRadius + (value === 0 || value === count ? 30 : 24), valueAngle);
-      arcLayer.appendChild(el("line", {
+      group.appendChild(el("line", {
         x1: inner.x.toFixed(2),
         y1: inner.y.toFixed(2),
         x2: outer.x.toFixed(2),
         y2: outer.y.toFixed(2),
         class: "network-tick",
       }));
-      if (value === 0 || value === count) {
-        const label = radialTextTransform(cx, cy, arcRadius + 42, valueAngle);
-        arcLayer.appendChild(el("text", {
-          x: label.x.toFixed(2),
-          y: label.y.toFixed(2),
-          transform: label.transform,
-          "text-anchor": "middle",
-          class: "network-tick-label",
-        }, String(value)));
-      }
     });
 
-    const labelPosition = radialTextTransform(cx, cy, labelRadius, position.angle);
-    arcLayer.appendChild(el("text", {
+    const labelPosition = radialTextTransform(cx, cy, labelRadius + 10, position.angle);
+    group.appendChild(el("text", {
       x: labelPosition.x.toFixed(2),
       y: labelPosition.y.toFixed(2),
       transform: labelPosition.transform,
       "text-anchor": "middle",
       class: "network-radial-label",
-    }, node.label));
+    }, `${node.label} (${count})`));
+    arcLayer.appendChild(group);
   });
   svg.appendChild(arcLayer);
 
