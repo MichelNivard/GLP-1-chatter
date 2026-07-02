@@ -35,6 +35,21 @@ FAMILY_NAMES = {
     "sema": "Semaglutide",
 }
 
+FAMILY_COPY = {
+    "reta": {
+        "aliases": "Matched terms include retatrutide and common spelling variants.",
+        "description": "Reports involving Retatrutide, including stack and switch intervals when attribution is stated.",
+    },
+    "tirz": {
+        "aliases": "Includes Mounjaro and Zepbound when the report attributes outcomes clearly.",
+        "description": "Reports involving Tirzepatide, with brand-name mentions retained in report details.",
+    },
+    "sema": {
+        "aliases": "Includes Ozempic, Wegovy, and Rybelsus when the report attributes outcomes clearly.",
+        "description": "Reports involving Semaglutide, with brand-name mentions retained in report details.",
+    },
+}
+
 DOSE_MG_RE = re.compile(r"(\d+(?:\.\d+)?)\s*mg\b", re.IGNORECASE)
 
 FALLBACK_FAMILY_COMPOUNDS = {
@@ -56,6 +71,53 @@ def fmt_number(value: float | None, digits: int = 1) -> str:
     if value is None:
         return "n/a"
     return f"{value:.{digits}f}"
+
+
+def nav_link(label: str, href: str, key: str, active: str) -> str:
+    class_attr = ' class="active"' if key == active else ""
+    return f'<a href="{html.escape(href)}"{class_attr}>{html.escape(label)}</a>'
+
+
+def site_header(asset_prefix: str = "", active: str = "overview") -> str:
+    home = asset_prefix or "./"
+    return f"""
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="{html.escape(home)}" class="brand">
+        <strong>GLP-1 Reports Observatory</strong>
+        <span>Reddit user reports with caveated extraction and review</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        {nav_link("Overview", home, "overview", active)}
+        {nav_link("Compare Drugs", f"{home}#compare", "compare", active)}
+        {nav_link("Weight Change", f"{home}#weight-change", "weight", active)}
+        {nav_link("Side Effects", f"{home}#side-effects", "effects", active)}
+        {nav_link("Methods", f"{home}#methods", "methods", active)}
+        {nav_link("Data Status", f"{home}#data-status", "status", active)}
+      </nav>
+    </div>
+  </header>
+"""
+
+
+def family_action_links(family: str, *, asset_prefix: str = "") -> str:
+    return f"""
+        <div class="actions">
+          <a class="button primary" href="{asset_prefix}{family}/">Weight Change</a>
+          <a class="button" href="{asset_prefix}{family}/side-effects.html">Side Effects</a>
+        </div>
+"""
+
+
+def family_tabs(current_family: str, *, current_view: str) -> str:
+    tabs = []
+    for family in DRUG_FAMILIES:
+        href = f"../{family}/side-effects.html" if current_view == "effects" else f"../{family}/"
+        active = " active" if family == current_family else ""
+        tabs.append(
+            f'<a class="tab{active}" href="{href}">{html.escape(FAMILY_NAMES[family])}</a>'
+        )
+    return f'<div class="tabs" aria-label="Drug family pages">{"".join(tabs)}</div>'
 
 
 def median(values: list[float]) -> float | None:
@@ -754,54 +816,94 @@ def html_page(title: str, body: str, asset_prefix: str = "") -> str:
 
 def render_home(summary: dict[str, Any], generated_at: str) -> str:
     cards = []
+    effects_cards = []
     for family in DRUG_FAMILIES:
         item = summary["families"][family]
         effects = ", ".join(effect["phrase"] for effect in item["most_common_side_effects"][:3]) or "n/a"
         cards.append(
             f"""
-      <a class="summary-card family-{family}" href="{family}/">
-        <span class="card-kicker">{html.escape(FAMILY_NAMES[family])}</span>
-        <strong>{item["plottable_reports"]}</strong>
-        <span>plottable reports</span>
-        <dl>
-          <div><dt>Parsed posts</dt><dd>{item["parsed_posts"]}</dd></div>
-          <div><dt>Median duration</dt><dd>{fmt_number(item["median_duration_weeks"])} weeks</dd></div>
-          <div><dt>Median change</dt><dd>{fmt_number(item["median_weight_change_kg"])} kg</dd></div>
-          <div><dt>Common effects</dt><dd>{html.escape(effects)}</dd></div>
-        </dl>
-      </a>
+      <article class="drug family-{family}">
+        <div class="drug-head">
+          <h2>{html.escape(FAMILY_NAMES[family])}</h2>
+          <p class="aliases">{html.escape(FAMILY_COPY[family]["aliases"])}</p>
+        </div>
+        <div class="metrics">
+          <div class="metric"><span>Parsed posts</span><strong>{item["parsed_posts"]}</strong></div>
+          <div class="metric"><span>Plottable</span><strong>{item["plottable_reports"]}</strong></div>
+          <div class="metric"><span>Median weeks</span><strong>{fmt_number(item["median_duration_weeks"])}</strong></div>
+          <div class="metric"><span>Median change</span><strong>{fmt_number(item["median_weight_change_kg"])} kg</strong></div>
+        </div>
+        <div class="mini-chart" aria-hidden="true"></div>
+        {family_action_links(family)}
+      </article>
+"""
+        )
+        effects_cards.append(
+            f"""
+      <article class="route effect-route family-{family}">
+        <strong>{html.escape(FAMILY_NAMES[family])}</strong>
+        <span>{html.escape(effects)}</span>
+        <a href="{family}/side-effects.html">Open Side Effects</a>
+      </article>
 """
         )
     body = f"""
 <body>
-  <header class="site-header">
-    <nav class="nav">
-      <a href="./" class="brand">GLP-1 Reddit Reports</a>
-      <a href="reta/">Reta</a>
-      <a href="tirz/">Tirz</a>
-      <a href="sema/">Sema</a>
-      <a href="concurrent/">Concurrent use</a>
-    </nav>
-  </header>
+  {site_header(active="overview")}
   <main class="home">
-    <section class="intro-band">
-      <div class="intro-copy">
-        <h1>Self-updating Reddit text mining for GLP-1/GIP/glucagon user reports</h1>
-        <p>This static site summarizes structured extractions from Reddit posts and comments mentioning retatrutide, tirzepatide, and semaglutide families. It is observational social-media text mining, not medical advice, clinical evidence, or proof of causality.</p>
-        <p class="meta">Generated {html.escape(generated_at)}. Reddit reports are parsed one post/comment per LLM call, cached by content hash, and rescreened when large extracted values are flagged.</p>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Drug Comparison Observatory</p>
+        <h1>Compare reported outcomes across three GLP-1 drug families.</h1>
+        <p>This static site summarizes structured extractions from Reddit posts and comments mentioning Retatrutide, Tirzepatide, and Semaglutide. It is observational social-media text mining, not medical advice, clinical evidence, or proof of causality.</p>
       </div>
+      <aside class="route-panel" aria-label="Primary routes">
+        <div class="route-grid">
+          <a class="route" href="#weight-change"><strong>Weight Change</strong><span>Duration, kilograms changed, fitted Reddit trend, and optional RCT overlay.</span></a>
+          <a class="route" href="#side-effects"><strong>Side Effects</strong><span>Normalized phrases, frequency bars, co-mentions, and source-level evidence.</span></a>
+          <a class="route" href="#methods"><strong>Methods</strong><span>Crawler scope, one-item LLM parsing, rescreening rules, and caveats.</span></a>
+        </div>
+      </aside>
     </section>
-    <section class="summary-grid" aria-label="Drug family summaries">
+    <section id="compare" class="comparison" aria-label="Drug comparison">
       {''.join(cards)}
     </section>
-    <section class="link-band">
-      <h2>Pages</h2>
-      <ul class="page-links">
-        <li><a href="reta/">Retatrutide scatterplot</a> <a href="reta/side-effects.html">side effects</a></li>
-        <li><a href="tirz/">Tirzepatide scatterplot</a> <a href="tirz/side-effects.html">side effects</a></li>
-        <li><a href="sema/">Semaglutide scatterplot</a> <a href="sema/side-effects.html">side effects</a></li>
-        <li><a href="concurrent/">Concurrent-use network</a></li>
-      </ul>
+    <section id="weight-change" class="section-panel">
+      <div>
+        <p class="eyebrow">Weight Change</p>
+        <h2>Reddit reports by duration and weight change</h2>
+        <p>Each drug page shows one point per extracted report, omits reports under 21 days, and plots weight loss as negative change in kilograms.</p>
+      </div>
+      <div class="route-grid route-grid-wide">
+        <a class="route" href="reta/"><strong>Retatrutide</strong><span>Open the Retatrutide weight-change scatterplot.</span></a>
+        <a class="route" href="tirz/"><strong>Tirzepatide</strong><span>Open the Tirzepatide weight-change scatterplot.</span></a>
+        <a class="route" href="sema/"><strong>Semaglutide</strong><span>Open the Semaglutide weight-change scatterplot.</span></a>
+      </div>
+    </section>
+    <section id="side-effects" class="section-panel">
+      <div>
+        <p class="eyebrow">Side Effects</p>
+        <h2>Commonly extracted side-effect phrases</h2>
+        <p>Side-effect pages show normalized phrase counts, co-occurrence patterns, and original Reddit evidence for each report.</p>
+      </div>
+      <div class="route-grid route-grid-wide">
+        {''.join(effects_cards)}
+      </div>
+    </section>
+    <section id="methods" class="section-panel">
+      <div>
+        <p class="eyebrow">Methods</p>
+        <h2>One Reddit item per LLM call</h2>
+        <p>Candidate posts and comments are stored with original full text and URLs. The parser extracts raw values only; Python code converts units and flags large losses, notable gains, or long durations for mini-model review.</p>
+      </div>
+      <a class="route route-single" href="concurrent/"><strong>Concurrent-use network</strong><span>Explore normalized compounds mentioned together in extracted reports.</span></a>
+    </section>
+    <section id="data-status" class="section-panel data-status">
+      <div>
+        <p class="eyebrow">Data Status</p>
+        <h2>Generated {html.escape(generated_at)}</h2>
+        <p>GitHub Actions crawls, parses, rescreens flagged reports, rebuilds the static JSON bundles, and publishes the site to GitHub Pages.</p>
+      </div>
     </section>
   </main>
 </body>
@@ -818,23 +920,20 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
     )
     body = f"""
 <body data-view="scatter" data-family="{family}" data-json="../data/{family}.json">
-  <header class="site-header">
-    <nav class="nav">
-      <a href="../" class="brand">GLP-1 Reddit Reports</a>
-      <a href="../reta/">Reta</a>
-      <a href="../tirz/">Tirz</a>
-      <a href="../sema/">Sema</a>
-      <a href="../concurrent/">Concurrent use</a>
-      <a href="side-effects.html">Side effects</a>
-    </nav>
-  </header>
+  {site_header("../", active="weight")}
   <main class="page">
     <section class="page-heading">
+      {family_tabs(family, current_view="weight")}
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Weight change over time</h1>
-      <p>Scatterplot of mined Reddit user reports with duration of at least 21 days. Weight loss is plotted as negative weight change in kg.</p>
+      <p>{html.escape(FAMILY_COPY[family]["description"])} Scatterplots include mined Reddit user reports with duration of at least 21 days. Weight loss is plotted as negative weight change in kilograms.</p>
       {rct_note}
       <p class="meta">Generated {html.escape(generated_at)}</p>
+      <div class="page-actions">
+        <a class="button primary" href="./">Weight Change</a>
+        <a class="button" href="side-effects.html">Side Effects</a>
+        <a class="button" href="../#compare">Compare Drugs</a>
+      </div>
     </section>
     <section class="plot-layout">
       <div class="plot-area">
@@ -857,22 +956,19 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
     name = FAMILY_NAMES[family]
     body = f"""
 <body data-view="side-effects" data-family="{family}" data-json="../data/{family}.json">
-  <header class="site-header">
-    <nav class="nav">
-      <a href="../" class="brand">GLP-1 Reddit Reports</a>
-      <a href="../reta/">Reta</a>
-      <a href="../tirz/">Tirz</a>
-      <a href="../sema/">Sema</a>
-      <a href="../concurrent/">Concurrent use</a>
-      <a href="./">Scatterplot</a>
-    </nav>
-  </header>
+  {site_header("../", active="effects")}
   <main class="page">
     <section class="page-heading">
+      {family_tabs(family, current_view="effects")}
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Side-effect mentions</h1>
-      <p>Frequency counts use explicit, auditable phrase normalization from <code>config/side_effect_normalization.json</code>. Severity is a prototype keyword screen until the follow-up LLM pass is added.</p>
+      <p>{html.escape(FAMILY_COPY[family]["description"])} Frequency counts use explicit, auditable phrase normalization from <code>config/side_effect_normalization.json</code>. Severity is a prototype keyword screen until the follow-up LLM pass is added.</p>
       <p class="meta">Generated {html.escape(generated_at)}</p>
+      <div class="page-actions">
+        <a class="button" href="./">Weight Change</a>
+        <a class="button primary" href="side-effects.html">Side Effects</a>
+        <a class="button" href="../#compare">Compare Drugs</a>
+      </div>
     </section>
     <section class="effect-toolbar" aria-label="Side-effect filters">
       <input id="effect-search" class="effect-search" type="search" placeholder="Search reports, notes, evidence">
@@ -920,20 +1016,18 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
 def render_concurrent_page(generated_at: str) -> str:
     body = f"""
 <body data-view="concurrent" data-json="../data/concurrent.json">
-  <header class="site-header">
-    <nav class="nav">
-      <a href="../" class="brand">GLP-1 Reddit Reports</a>
-      <a href="../reta/">Reta</a>
-      <a href="../tirz/">Tirz</a>
-      <a href="../sema/">Sema</a>
-    </nav>
-  </header>
+  {site_header("../", active="compare")}
   <main class="page">
     <section class="page-heading">
       <p class="eyebrow">All drug families</p>
       <h1>Concurrent-use network</h1>
       <p>Circular network of normalized compounds mentioned together in parsed Reddit reports. Edges connect compounds appearing in the same extracted report; stack-only mode restricts counts to reports marked as stacks by the parser.</p>
       <p class="meta">Generated {html.escape(generated_at)}</p>
+      <div class="page-actions">
+        <a class="button" href="../reta/">Retatrutide</a>
+        <a class="button" href="../tirz/">Tirzepatide</a>
+        <a class="button" href="../sema/">Semaglutide</a>
+      </div>
     </section>
     <section class="network-controls" aria-label="Network controls">
       <button type="button" class="segmented active" data-network-mode="all">All concurrent mentions</button>

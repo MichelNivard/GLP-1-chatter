@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option 06 - Modern Data Product</title>
+  <style>
+    :root {
+      --bg: #f4f6f4;
+      --panel: #ffffff;
+      --ink: #17201b;
+      --muted: #657269;
+      --line: #d9e1dc;
+      --green: #156f57;
+      --blue: #34759e;
+      --grape: #6b5aa6;
+      --gold: #b17a2a;
+      --soft-green: #e8f3ee;
+      --soft-blue: #e8f1f7;
+      --soft-gold: #f7efe2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid var(--line);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .brand {
+      display: grid;
+      gap: 4px;
+      padding: 10px 8px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand strong { font-size: 1.05rem; }
+    .brand span { color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+    .nav-section {
+      display: grid;
+      gap: 7px;
+    }
+    .nav-label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-size: 0.7rem;
+      font-weight: 850;
+      padding: 0 8px;
+      margin-bottom: 2px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #35443b;
+      text-decoration: none;
+      padding: 10px 10px;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+    .nav-link.active, .nav-link:hover {
+      background: var(--soft-green);
+      color: #113f31;
+    }
+    .count {
+      color: var(--muted);
+      font-size: 0.78rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 7px;
+      background: #fff;
+    }
+    main {
+      min-width: 0;
+      padding: 22px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .crumbs {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .button-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .button {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-weight: 750;
+      font-size: 0.9rem;
+    }
+    .button.primary {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+    .hero {
+      background:
+        linear-gradient(135deg, rgba(21, 111, 87, 0.12), transparent 48%),
+        #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 22px;
+      align-items: stretch;
+    }
+    .eyebrow {
+      color: var(--green);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 850;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 4vw, 4.8rem);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .mini-panel {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .mini-panel h2 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .filter {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+    .filter span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 5px;
+    }
+    .filter strong {
+      font-size: 1rem;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.28rem;
+      letter-spacing: 0;
+    }
+    .card p { font-size: 0.92rem; }
+    .statline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px;
+      background: #fbfcfb;
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+    .stat strong { font-size: 1.18rem; }
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+    .segmented {
+      display: flex;
+      gap: 4px;
+      background: #eef2ef;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .segment {
+      border: 0;
+      background: transparent;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--muted);
+      font-weight: 750;
+      font-size: 0.85rem;
+    }
+    .segment.active {
+      color: var(--ink);
+      background: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .chart {
+      height: 390px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(to right, transparent 0, transparent 54px, #e9efeb 55px),
+        linear-gradient(to bottom, transparent 0, transparent 54px, #e9efeb 55px),
+        #fbfcfb;
+      background-size: 55px 55px;
+      position: relative;
+      overflow: hidden;
+    }
+    .ribbon {
+      position: absolute;
+      left: 10%;
+      right: 9%;
+      top: 48%;
+      height: 92px;
+      background: rgba(52, 117, 158, 0.13);
+      border-radius: 50%;
+      transform: rotate(-6deg);
+    }
+    .curve {
+      position: absolute;
+      left: 10%;
+      right: 8%;
+      top: 47%;
+      height: 78px;
+      border-bottom: 4px solid var(--green);
+      border-radius: 0 0 60% 43%;
+      transform: rotate(-5deg);
+    }
+    .dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(21, 111, 87, 0.13);
+    }
+    .report {
+      display: grid;
+      gap: 12px;
+    }
+    .report-row {
+      border: 1px solid var(--line);
+      background: #fbfcfb;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .report-row span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+    .report-row strong {
+      display: block;
+      font-size: 0.96rem;
+      line-height: 1.45;
+    }
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+      .hero, .workbench, .summary-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 660px) {
+      .top { align-items: flex-start; flex-direction: column; }
+      .button-row { justify-content: flex-start; }
+      .filter-grid { grid-template-columns: 1fr; }
+      .panel-head { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary">
+      <div class="brand"><strong>GLP-1 Reports</strong><span>Self-updating Reddit extraction and static charts</span></div>
+      <div class="nav-section">
+        <div class="nav-label">Views</div>
+        <a class="nav-link active" href="#"><span>Overview</span><span class="count">home</span></a>
+        <a class="nav-link" href="#"><span>Weight Change</span><span class="count">3</span></a>
+        <a class="nav-link" href="#"><span>Side Effects</span><span class="count">3</span></a>
+        <a class="nav-link" href="#"><span>Methods</span><span class="count">doc</span></a>
+        <a class="nav-link" href="#"><span>Data Status</span><span class="count">live</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Drug Families</div>
+        <a class="nav-link" href="#"><span>Retatrutide</span><span class="count">621</span></a>
+        <a class="nav-link" href="#"><span>Tirzepatide</span><span class="count">1,918</span></a>
+        <a class="nav-link" href="#"><span>Semaglutide</span><span class="count">1,303</span></a>
+      </div>
+    </aside>
+    <main>
+      <div class="top">
+        <div class="crumbs">Overview / Reddit reports / Updated 08:42 UTC</div>
+        <div class="button-row">
+          <button class="button">Download JSON</button>
+          <button class="button primary">Open Methods</button>
+        </div>
+      </div>
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Option 06 - Modern Data Product</div>
+          <h1>A polished reporting interface for GLP-1 user reports.</h1>
+          <p>This option keeps the project serious but makes the site feel more finished. Navigation is stable, drug names are explicit, and filters are visible without turning the homepage into a landing page.</p>
+        </div>
+        <aside class="mini-panel">
+          <h2>Current filters</h2>
+          <div class="filter-grid">
+            <div class="filter"><span>Drug family</span><strong>All</strong></div>
+            <div class="filter"><span>Minimum duration</span><strong>21 days</strong></div>
+            <div class="filter"><span>Attribution</span><strong>Clear or switch</strong></div>
+            <div class="filter"><span>RCT overlay</span><strong>Optional</strong></div>
+          </div>
+        </aside>
+      </section>
+      <section class="summary-grid">
+        <article class="card">
+          <h2>Retatrutide</h2>
+          <p>Reports involving Retatrutide, with stack and switch intervals labeled separately.</p>
+          <div class="statline"><div class="stat"><span>Plottable</span><strong>418</strong></div><div class="stat"><span>Median</span><strong>-9.4 kg</strong></div></div>
+        </article>
+        <article class="card">
+          <h2>Tirzepatide</h2>
+          <p>Reports involving Tirzepatide, including Mounjaro and Zepbound where attribution is clear.</p>
+          <div class="statline"><div class="stat"><span>Plottable</span><strong>1,284</strong></div><div class="stat"><span>Median</span><strong>-14.1 kg</strong></div></div>
+        </article>
+        <article class="card">
+          <h2>Semaglutide</h2>
+          <p>Reports involving Semaglutide, including Ozempic, Wegovy, and Rybelsus where attribution is clear.</p>
+          <div class="statline"><div class="stat"><span>Plottable</span><strong>972</strong></div><div class="stat"><span>Median</span><strong>-10.8 kg</strong></div></div>
+        </article>
+      </section>
+      <section class="workbench">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Weight change by duration</h2>
+            <div class="segmented" aria-label="Drug selector">
+              <button class="segment active">All</button>
+              <button class="segment">Retatrutide</button>
+              <button class="segment">Tirzepatide</button>
+              <button class="segment">Semaglutide</button>
+            </div>
+          </div>
+          <div class="chart" aria-label="Placeholder scatterplot">
+            <span class="ribbon"></span>
+            <span class="curve"></span>
+            <span class="dot" style="left:13%;top:48%"></span><span class="dot" style="left:23%;top:56%"></span><span class="dot" style="left:34%;top:63%"></span><span class="dot" style="left:46%;top:71%"></span><span class="dot" style="left:58%;top:77%"></span><span class="dot" style="left:73%;top:69%"></span>
+          </div>
+        </article>
+        <aside class="panel">
+          <div class="panel-head"><h2>Point details</h2></div>
+          <div class="report">
+            <div class="report-row"><span>Drug</span><strong>Tirzepatide, Mounjaro mentioned</strong></div>
+            <div class="report-row"><span>Duration</span><strong>24 weeks, extracted from "six months"</strong></div>
+            <div class="report-row"><span>Weight change</span><strong>-18.6 kg from stated loss</strong></div>
+            <div class="report-row"><span>Attribution</span><strong>Clear single-drug report</strong></div>
+            <div class="report-row"><span>Evidence</span><strong>Original Reddit text appears here on click or hover.</strong></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

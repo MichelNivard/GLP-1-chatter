@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option 04 - Public Signal Monitor</title>
+  <style>
+    :root {
+      --bg: #111513;
+      --panel: #171d1a;
+      --panel-2: #1e2622;
+      --ink: #edf4ef;
+      --muted: #aab8b1;
+      --line: #2f3a35;
+      --green: #57c58f;
+      --cyan: #67b7d9;
+      --amber: #d8a64f;
+      --red: #d46b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(87, 197, 143, 0.06), transparent 260px),
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(17, 21, 19, 0.9);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .pulse {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(87, 197, 143, 0.16);
+    }
+    nav {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 11px;
+      border-radius: 7px;
+      font-size: 0.92rem;
+    }
+    nav a.active, nav a:hover {
+      color: var(--ink);
+      background: var(--panel-2);
+    }
+    main {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 64px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 420px;
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+    .panel {
+      background: rgba(23, 29, 26, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .eyebrow {
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.78rem;
+      font-weight: 850;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.2rem, 4.8vw, 5.2rem);
+      line-height: 0.96;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+    .status-table {
+      display: grid;
+      gap: 10px;
+    }
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 13px;
+    }
+    .status-row span { color: var(--muted); font-size: 0.92rem; }
+    .status-row strong { color: var(--ink); }
+    .ok { color: var(--green); }
+    .warn { color: var(--amber); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.77rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.75rem;
+      letter-spacing: 0;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr);
+      gap: 18px;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .chip.active {
+      color: var(--ink);
+      border-color: rgba(87, 197, 143, 0.55);
+      background: rgba(87, 197, 143, 0.14);
+    }
+    .chart {
+      height: 390px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(to right, transparent 0, transparent 55px, rgba(255,255,255,0.055) 56px),
+        linear-gradient(to bottom, transparent 0, transparent 55px, rgba(255,255,255,0.055) 56px),
+        #121815;
+      background-size: 56px 56px;
+      position: relative;
+      overflow: hidden;
+    }
+    .scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 45%;
+      height: 1px;
+      background: rgba(216, 166, 79, 0.5);
+    }
+    .curve {
+      position: absolute;
+      left: 10%;
+      right: 7%;
+      top: 48%;
+      height: 78px;
+      border-bottom: 4px solid rgba(87, 197, 143, 0.78);
+      border-radius: 0 0 60% 46%;
+      transform: rotate(-5deg);
+    }
+    .dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(103, 183, 217, 0.12);
+    }
+    .queue {
+      display: grid;
+      gap: 10px;
+    }
+    .queue-item {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--panel-2);
+    }
+    .badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: rgba(216, 166, 79, 0.14);
+      color: var(--amber);
+      font-weight: 900;
+      border: 1px solid rgba(216, 166, 79, 0.28);
+    }
+    .queue-item strong { display: block; margin-bottom: 4px; }
+    .queue-item span { color: var(--muted); font-size: 0.86rem; }
+    .count { color: var(--ink); font-weight: 850; }
+    @media (max-width: 980px) {
+      .hero, .main-grid { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .header-inner { align-items: flex-start; flex-direction: column; padding: 14px 0; }
+      nav { justify-content: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand"><span class="pulse"></span><span>GLP-1 Public Signal Monitor</span></div>
+      <nav aria-label="Primary">
+        <a class="active" href="#">Overview</a>
+        <a href="#">Weight Change</a>
+        <a href="#">Side Effects</a>
+        <a href="#">Retatrutide</a>
+        <a href="#">Tirzepatide</a>
+        <a href="#">Semaglutide</a>
+        <a href="#">Methods</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="hero">
+      <article class="panel">
+        <div class="eyebrow">Option 04 - Public Signal Monitor</div>
+        <h1>Live public reports, parsed and reviewed.</h1>
+        <p>This option makes the self-updating pipeline obvious. It is useful if you want visitors to understand that the database is actively crawling, parsing, rescreening, and rebuilding.</p>
+      </article>
+      <aside class="panel">
+        <div class="status-table">
+          <div class="status-row"><span>Crawler</span><strong class="ok">running every 12 hours</strong></div>
+          <div class="status-row"><span>Parser</span><strong class="ok">one item per call</strong></div>
+          <div class="status-row"><span>Mini-model review</span><strong class="warn">gain and large-value flags</strong></div>
+          <div class="status-row"><span>GitHub Pages</span><strong class="ok">rebuilt after parse</strong></div>
+        </div>
+      </aside>
+    </section>
+    <section class="grid" aria-label="Pipeline metrics">
+      <div class="metric"><span>Raw candidates</span><strong>7,406</strong></div>
+      <div class="metric"><span>Parsed reports</span><strong>5,119</strong></div>
+      <div class="metric"><span>Plottable reports</span><strong>2,674</strong></div>
+      <div class="metric"><span>Review flags</span><strong>197</strong></div>
+    </section>
+    <section class="main-grid">
+      <article class="panel">
+        <div class="toolbar">
+          <span class="chip active">All drugs</span>
+          <span class="chip">Retatrutide</span>
+          <span class="chip">Tirzepatide</span>
+          <span class="chip">Semaglutide</span>
+          <span class="chip">Exclude RCT overlay</span>
+        </div>
+        <div class="chart" aria-label="Placeholder scatterplot">
+          <span class="scanline"></span>
+          <span class="curve"></span>
+          <span class="dot" style="left:13%;top:48%"></span><span class="dot" style="left:21%;top:56%"></span><span class="dot" style="left:29%;top:62%"></span><span class="dot" style="left:42%;top:70%"></span><span class="dot" style="left:53%;top:74%"></span><span class="dot" style="left:64%;top:78%"></span><span class="dot" style="left:77%;top:69%"></span>
+        </div>
+      </article>
+      <aside class="panel">
+        <h2>Mini review queue</h2>
+        <div class="queue">
+          <div class="queue-item"><div class="badge">L</div><div><strong>Large loss</strong><span>Check attribution and prior GLP-1 history.</span></div><div class="count">84</div></div>
+          <div class="queue-item"><div class="badge">G</div><div><strong>Weight gain</strong><span>Check whether a goal weight or dose was misread.</span></div><div class="count">11</div></div>
+          <div class="queue-item"><div class="badge">D</div><div><strong>Long duration</strong><span>Check age, years-old text, and total journey phrases.</span></div><div class="count">102</div></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

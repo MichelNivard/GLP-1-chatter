@@ -20,6 +20,23 @@ function fmt(value, digits = 1, suffix = "") {
   return `${Number(value).toFixed(digits)}${suffix}`;
 }
 
+const FAMILY_NAMES = {
+  reta: "Retatrutide",
+  tirz: "Tirzepatide",
+  sema: "Semaglutide",
+};
+
+function familyName(family) {
+  return FAMILY_NAMES[family] || family || "unknown drug";
+}
+
+function reportDrugLabel(report) {
+  const name = familyName(report.drug_family);
+  const mentioned = report.drug_name_mentioned;
+  if (!mentioned || String(mentioned).toLowerCase() === String(name).toLowerCase()) return name;
+  return `${name} · mentioned as ${mentioned}`;
+}
+
 async function loadPageData() {
   const jsonPath = document.body.dataset.json;
   const response = await fetch(jsonPath);
@@ -52,7 +69,7 @@ function renderDetail(point) {
     ? "<p class=\"note\">Latest stored Reddit text changed after this item was processed; the text below is the processed version used for extraction.</p>"
     : "";
   detail.innerHTML = `
-    <h2>${htmlEscape(point.drug_name_mentioned || point.drug_family)}</h2>
+    <h2>${htmlEscape(reportDrugLabel(point))}</h2>
     ${drift}
     <h3>Original text</h3>
     <pre>${htmlEscape(point.processed_full_text || point.full_text || "")}</pre>
@@ -60,7 +77,8 @@ function renderDetail(point) {
     <dl class="detail-list">
       <div><dt>Post date</dt><dd>${htmlEscape(point.created_iso || "n/a")}</dd></div>
       <div><dt>Subreddit</dt><dd>r/${htmlEscape(point.subreddit)}</dd></div>
-      <div><dt>Drug</dt><dd>${htmlEscape(point.drug_family)} / ${htmlEscape(point.drug_name_mentioned || "n/a")}</dd></div>
+      <div><dt>Drug family</dt><dd>${htmlEscape(familyName(point.drug_family))}</dd></div>
+      <div><dt>Mentioned as</dt><dd>${htmlEscape(point.drug_name_mentioned || "n/a")}</dd></div>
       <div><dt>Dose</dt><dd>${htmlEscape(point.dose_strong || "n/a")}</dd></div>
       <div><dt>Duration</dt><dd>${htmlEscape(point.duration_raw || "n/a")} (${fmt(point.duration_weeks, 1, " weeks")})</dd></div>
       <div><dt>Start</dt><dd>${fmt(point.weight_start_value)} ${htmlEscape(point.weight_start_unit || "")} (${fmt(point.weight_start_kg, 1, " kg")})</dd></div>
@@ -503,7 +521,7 @@ function renderSideEffects(data) {
           <h3>${htmlEscape(report.created_iso || "unknown date")} · r/${htmlEscape(report.subreddit || "unknown")}</h3>
           ${severityBadge(severity)}
         </div>
-        <p><strong>${htmlEscape(report.drug_name_mentioned || report.drug_family || "unknown drug")}</strong> ${htmlEscape(report.dose_strong || "")}</p>
+        <p><strong>${htmlEscape(reportDrugLabel(report))}</strong> ${htmlEscape(report.dose_strong || "")}</p>
         <div class="effect-chip-row">${effectsHtml}</div>
         <dl class="detail-list compact">
           <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, primaryEffect))}</dd></div>
@@ -663,7 +681,7 @@ function reportMiniCard(report) {
   return `
     <article class="report-mini">
       <h3>${htmlEscape(report.created_iso || "unknown date")} · r/${htmlEscape(report.subreddit || "unknown")}</h3>
-      <p><strong>${htmlEscape(report.drug_name_mentioned || report.drug_family || "unknown focal drug")}</strong> with ${htmlEscape(raw || compounds || "n/a")}</p>
+      <p><strong>${htmlEscape(reportDrugLabel(report))}</strong> with ${htmlEscape(raw || compounds || "n/a")}</p>
       <dl class="detail-list compact">
         <div><dt>Normalized</dt><dd>${htmlEscape(compounds || "n/a")}</dd></div>
         <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
@@ -707,7 +725,7 @@ function renderNetworkNodeDetail(node, data, mode) {
   detail.innerHTML = `
     <h2>${htmlEscape(node.label)}</h2>
     <dl class="detail-list">
-      <div><dt>Family</dt><dd>${htmlEscape(node.family || "unclear")}</dd></div>
+      <div><dt>Family</dt><dd>${htmlEscape(familyName(node.family))}</dd></div>
       <div><dt>Reports</dt><dd>${reportIds.length}</dd></div>
       <div><dt>All-report count</dt><dd>${node.count}</dd></div>
       <div><dt>Stack-only count</dt><dd>${node.stack_count}</dd></div>

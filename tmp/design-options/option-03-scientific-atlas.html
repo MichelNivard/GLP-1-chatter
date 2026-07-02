@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option 03 - Scientific Atlas</title>
+  <style>
+    :root {
+      --bg: #f8f7f2;
+      --sidebar: #24352f;
+      --sidebar-ink: #f5f8f5;
+      --sidebar-muted: #bac8c1;
+      --paper: #ffffff;
+      --ink: #18221d;
+      --muted: #6a736d;
+      --line: #d9d7cc;
+      --green: #27705a;
+      --violet: #5f5a9f;
+      --rust: #9c5d2e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 288px minmax(0, 1fr);
+    }
+    aside.nav {
+      background: var(--sidebar);
+      color: var(--sidebar-ink);
+      padding: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .brand {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+      padding-bottom: 20px;
+    }
+    .brand strong {
+      display: block;
+      font-size: 1.25rem;
+      letter-spacing: 0;
+      margin-bottom: 8px;
+    }
+    .brand span {
+      color: var(--sidebar-muted);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+    .nav-group {
+      display: grid;
+      gap: 8px;
+    }
+    .nav-label {
+      color: var(--sidebar-muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .nav a {
+      color: var(--sidebar-ink);
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 7px;
+      background: transparent;
+      font-size: 0.95rem;
+    }
+    .nav a.active, .nav a:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+    main {
+      padding: 32px;
+    }
+    .content {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 20px;
+    }
+    .paper {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+    .eyebrow {
+      color: var(--green);
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0 0 14px;
+      max-width: 880px;
+      font-size: clamp(2.2rem, 4.4vw, 5rem);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .method-list {
+      display: grid;
+      gap: 12px;
+    }
+    .method-item {
+      border-left: 3px solid var(--green);
+      padding-left: 12px;
+    }
+    .method-item strong { display: block; margin-bottom: 4px; }
+    .method-item span { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+    .atlas-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      border: 1px solid var(--line);
+      background: #fbfaf6;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      font-weight: 750;
+    }
+    .tab.active {
+      background: var(--sidebar);
+      color: white;
+      border-color: var(--sidebar);
+    }
+    .chart {
+      height: 420px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(to right, transparent 0, transparent 63px, #ebe9df 64px),
+        linear-gradient(to bottom, transparent 0, transparent 63px, #ebe9df 64px),
+        #fffefa;
+      background-size: 64px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+    .axis-label {
+      position: absolute;
+      color: #59625c;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .axis-label.x { bottom: 12px; left: 42%; }
+    .axis-label.y { top: 44%; left: -28px; transform: rotate(-90deg); }
+    .line {
+      position: absolute;
+      left: 11%;
+      right: 7%;
+      top: 46%;
+      height: 86px;
+      border-bottom: 4px solid rgba(39, 112, 90, 0.72);
+      border-radius: 0 0 60% 42%;
+      transform: rotate(-6deg);
+    }
+    .dot {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(39, 112, 90, 0.12);
+    }
+    .source-list {
+      display: grid;
+      gap: 10px;
+    }
+    .source {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fffefa;
+    }
+    .source strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .source span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+    .bar-list {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 44px;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    .track {
+      height: 9px;
+      background: #edece4;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .bar {
+      display: block;
+      height: 100%;
+      background: var(--green);
+      border-radius: 99px;
+    }
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      aside.nav { position: static; height: auto; }
+      .hero, .atlas-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="nav" aria-label="Primary">
+      <div class="brand">
+        <strong>GLP-1 Report Atlas</strong>
+        <span>Mapped from public Reddit posts and comments with structured extraction.</span>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Explore</div>
+        <a class="active" href="#">Overview</a>
+        <a href="#">Weight Change</a>
+        <a href="#">Side Effects</a>
+        <a href="#">Source Reports</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Drug Families</div>
+        <a href="#">Retatrutide</a>
+        <a href="#">Tirzepatide</a>
+        <a href="#">Semaglutide</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Project</div>
+        <a href="#">Methods</a>
+        <a href="#">Data Status</a>
+      </div>
+    </aside>
+    <main>
+      <div class="content">
+        <section class="hero">
+          <article class="paper">
+            <div class="eyebrow">Option 03 - Scientific Atlas</div>
+            <h1>An explorable atlas of Reddit-reported GLP-1 treatment experiences.</h1>
+            <p>This option makes the project feel like a research instrument. The sidebar creates a stable mental model: explore by outcome, then by Retatrutide, Tirzepatide, or Semaglutide.</p>
+          </article>
+          <aside class="paper">
+            <div class="method-list">
+              <div class="method-item"><strong>One item per LLM call</strong><span>Each Reddit post or comment is parsed independently.</span></div>
+              <div class="method-item"><strong>Mini review flags</strong><span>Large loss, notable gain, or long duration is checked again.</span></div>
+              <div class="method-item"><strong>Original text retained</strong><span>Hover details link back to Reddit source material.</span></div>
+            </div>
+          </aside>
+        </section>
+        <section class="atlas-grid">
+          <article class="paper">
+            <div class="tabs" aria-label="Drug tabs">
+              <span class="tab active">Retatrutide</span>
+              <span class="tab">Tirzepatide</span>
+              <span class="tab">Semaglutide</span>
+            </div>
+            <div class="chart" aria-label="Placeholder scatterplot">
+              <span class="axis-label y">Weight change (kg)</span>
+              <span class="axis-label x">Duration (weeks)</span>
+              <span class="line"></span>
+              <span class="dot" style="left:15%;top:44%"></span><span class="dot" style="left:22%;top:54%"></span><span class="dot" style="left:33%;top:61%"></span><span class="dot" style="left:49%;top:70%"></span><span class="dot" style="left:61%;top:76%"></span><span class="dot" style="left:77%;top:69%"></span>
+            </div>
+          </article>
+          <aside class="paper">
+            <h2>Selected report</h2>
+            <div class="source-list">
+              <div class="source"><strong>Post date</strong><span>2026-06-28</span></div>
+              <div class="source"><strong>Drug attribution</strong><span>Retatrutide, clear single-drug interval</span></div>
+              <div class="source"><strong>Evidence</strong><span>"Down 22 lb since starting, currently 8 weeks in..."</span></div>
+              <div class="source"><strong>Caveat</strong><span>User report. Not verified clinical data.</span></div>
+            </div>
+            <div class="bar-list">
+              <div class="bar-row"><span>nausea</span><span class="track"><span class="bar" style="width:78%"></span></span><strong>78</strong></div>
+              <div class="bar-row"><span>fatigue</span><span class="track"><span class="bar" style="width:52%"></span></span><strong>52</strong></div>
+              <div class="bar-row"><span>constipation</span><span class="track"><span class="bar" style="width:39%"></span></span><strong>39</strong></div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

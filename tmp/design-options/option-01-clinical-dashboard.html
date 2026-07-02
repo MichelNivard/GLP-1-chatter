@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option 01 - Clinical Research Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f8f7;
+      --paper: #ffffff;
+      --ink: #15201a;
+      --muted: #69766f;
+      --line: #dce3df;
+      --green: #17694b;
+      --blue: #2f6f9f;
+      --red: #a44646;
+      --amber: #a66b1e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-inner {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+      background:
+        linear-gradient(135deg, rgba(23, 105, 75, 0.18), transparent 55%),
+        #e7f2ed;
+      border: 1px solid #bcd5ca;
+      position: relative;
+    }
+    .mark:after {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      height: 10px;
+      border-left: 2px solid var(--green);
+      border-bottom: 2px solid var(--green);
+      transform: skewX(-20deg);
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    nav a {
+      color: #405047;
+      text-decoration: none;
+      font-size: 0.91rem;
+      padding: 8px 10px;
+      border-radius: 7px;
+    }
+    nav a.active, nav a:hover {
+      background: #edf4f1;
+      color: #143b2e;
+    }
+    main {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 4vw, 4.2rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+      max-width: 790px;
+    }
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .status {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 12px;
+      background: #fbfcfb;
+    }
+    .label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+    .value {
+      margin-top: 6px;
+      font-size: 1.45rem;
+      font-weight: 800;
+    }
+    .drug-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .drug-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--green);
+      border-radius: 8px;
+      padding: 18px;
+      min-height: 212px;
+    }
+    .drug-card:nth-child(2) { border-top-color: var(--blue); }
+    .drug-card:nth-child(3) { border-top-color: var(--amber); }
+    h2, h3 { letter-spacing: 0; }
+    h2 { margin: 0 0 10px; font-size: 1.35rem; }
+    h3 { margin: 0 0 8px; font-size: 1rem; }
+    .metric-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .metric-row div {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    .metric-row span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    .metric-row strong {
+      font-size: 1.2rem;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .chart {
+      height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background:
+        linear-gradient(to right, transparent 0, transparent 59px, #e9efec 60px),
+        linear-gradient(to bottom, transparent 0, transparent 59px, #e9efec 60px),
+        #fbfcfb;
+      background-size: 60px 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    .point {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      opacity: 0.75;
+    }
+    .point.blue { background: var(--blue); }
+    .point.amber { background: var(--amber); }
+    .curve {
+      position: absolute;
+      left: 9%;
+      right: 8%;
+      top: 47%;
+      height: 72px;
+      border-bottom: 4px solid rgba(23, 105, 75, 0.65);
+      border-radius: 0 0 55% 45%;
+      transform: rotate(-4deg);
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .table th, .table td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+    }
+    .table th {
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+    @media (max-width: 860px) {
+      .hero, .drug-grid, .main-grid { grid-template-columns: 1fr; }
+      .topbar-inner { height: auto; padding: 14px 0; align-items: flex-start; flex-direction: column; }
+      nav { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="mark"></span><span>GLP-1 User Reports</span></div>
+      <nav aria-label="Primary">
+        <a class="active" href="#">Overview</a>
+        <a href="#">Weight Change</a>
+        <a href="#">Side Effects</a>
+        <a href="#">Methods</a>
+        <a href="#">Data Status</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="panel">
+        <div class="label">Option 01 - Clinical Research Dashboard</div>
+        <h1>Reddit-mined GLP-1 treatment reports</h1>
+        <p class="lede">A self-updating, caveated view of user reports for Retatrutide, Tirzepatide, and Semaglutide. The design keeps the data central and treats uncertainty as first-class information.</p>
+      </div>
+      <aside class="panel">
+        <h3>Data status</h3>
+        <div class="status-grid">
+          <div class="status"><div class="label">Parsed items</div><div class="value">3,842</div></div>
+          <div class="status"><div class="label">Reports</div><div class="value">5,119</div></div>
+          <div class="status"><div class="label">Mini review</div><div class="value">214</div></div>
+          <div class="status"><div class="label">Updated</div><div class="value">08:42</div></div>
+        </div>
+      </aside>
+    </section>
+    <section class="drug-grid">
+      <article class="drug-card">
+        <h2>Retatrutide</h2>
+        <p class="note">GLP-1, GIP, and glucagon receptor agonist reports from relevant Reddit sources.</p>
+        <div class="metric-row"><div><span>Plottable reports</span><strong>418</strong></div><div><span>Median change</span><strong>-9.4 kg</strong></div><div><span>Median duration</span><strong>13.0 weeks</strong></div><div><span>Common effects</span><strong>nausea</strong></div></div>
+      </article>
+      <article class="drug-card">
+        <h2>Tirzepatide</h2>
+        <p class="note">Includes reports mentioning Mounjaro and Zepbound when attribution is clear.</p>
+        <div class="metric-row"><div><span>Plottable reports</span><strong>1,284</strong></div><div><span>Median change</span><strong>-14.1 kg</strong></div><div><span>Median duration</span><strong>24.0 weeks</strong></div><div><span>Common effects</span><strong>constipation</strong></div></div>
+      </article>
+      <article class="drug-card">
+        <h2>Semaglutide</h2>
+        <p class="note">Includes reports mentioning Ozempic, Wegovy, and Rybelsus when attribution is clear.</p>
+        <div class="metric-row"><div><span>Plottable reports</span><strong>972</strong></div><div><span>Median change</span><strong>-10.8 kg</strong></div><div><span>Median duration</span><strong>21.5 weeks</strong></div><div><span>Common effects</span><strong>fatigue</strong></div></div>
+      </article>
+    </section>
+    <section class="main-grid">
+      <article class="panel">
+        <h2>Weight change over time</h2>
+        <div class="chart" aria-label="Placeholder scatterplot">
+          <span class="curve"></span>
+          <span class="point" style="left:14%;top:47%"></span><span class="point" style="left:19%;top:55%"></span><span class="point blue" style="left:28%;top:62%"></span><span class="point amber" style="left:37%;top:51%"></span><span class="point" style="left:45%;top:69%"></span><span class="point blue" style="left:55%;top:74%"></span><span class="point amber" style="left:66%;top:66%"></span><span class="point blue" style="left:78%;top:80%"></span>
+        </div>
+        <p class="note">Weight loss is plotted as negative weight change in kilograms. Reports below 21 days and reports with unclear attribution are excluded from the fitted curve.</p>
+      </article>
+      <aside class="panel">
+        <h2>Review queue</h2>
+        <table class="table">
+          <thead><tr><th>Flag</th><th>Count</th></tr></thead>
+          <tbody>
+            <tr><td>Large loss</td><td>84</td></tr>
+            <tr><td>Long duration</td><td>102</td></tr>
+            <tr><td>Weight gain</td><td>11</td></tr>
+            <tr><td>Parse errors</td><td>17</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Mini-model review is used for reports with large extracted values where reading-comprehension errors are more likely.</p>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

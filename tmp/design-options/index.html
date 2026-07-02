@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GLP-1 Reports Design Options</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201b;
+      --muted: #667069;
+      --line: #d9e0dc;
+      --paper: #fbfcfa;
+      --panel: #ffffff;
+      --green: #17694b;
+      --blue: #2f6f9f;
+      --amber: #a86612;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+    }
+    main {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0 64px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 24px;
+      margin-bottom: 28px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 4rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0;
+      max-width: 760px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    a.card {
+      display: block;
+      min-height: 178px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: inherit;
+      text-decoration: none;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    a.card:hover {
+      transform: translateY(-2px);
+      border-color: #aebbb5;
+      box-shadow: 0 18px 40px rgba(33, 46, 39, 0.1);
+    }
+    a.card.selected {
+      border-color: #17694b;
+      box-shadow: 0 0 0 3px rgba(23, 105, 75, 0.12);
+    }
+    .eyebrow {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.25rem;
+      letter-spacing: 0;
+    }
+    .tagrow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 0.78rem;
+      color: #34423a;
+      background: #f7faf8;
+    }
+    footer {
+      margin-top: 32px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Design Options</h1>
+      <p>Six static placeholder mockups for the GLP-1 Reddit report site. All options use full public-facing drug names in navigation and page labels.</p>
+    </header>
+
+    <section class="grid" aria-label="Design options">
+      <a class="card" href="option-01-clinical-dashboard.html">
+        <div class="eyebrow">Option 01</div>
+        <h2>Clinical Research Dashboard</h2>
+        <p>Quiet, credible, data-dense. Best for a serious health-data resource with compact cards and strong chart readability.</p>
+        <div class="tagrow"><span class="tag">top nav</span><span class="tag">status strip</span><span class="tag">clinical palette</span></div>
+      </a>
+      <a class="card selected" href="option-02-comparison-observatory.html">
+        <div class="eyebrow">Option 02 - Current Pick</div>
+        <h2>Drug Comparison Observatory</h2>
+        <p>Three-drug comparison is the central organizing idea, with clear routes into weight change and side-effect views.</p>
+        <div class="tagrow"><span class="tag">comparison first</span><span class="tag">large panels</span><span class="tag">drug columns</span><span class="tag">selected</span></div>
+      </a>
+      <a class="card" href="option-03-scientific-atlas.html">
+        <div class="eyebrow">Option 03</div>
+        <h2>Scientific Atlas</h2>
+        <p>Sidebar navigation, method-forward structure, and report explorer layout. Feels like an ongoing research instrument.</p>
+        <div class="tagrow"><span class="tag">sidebar</span><span class="tag">methods visible</span><span class="tag">explorer</span></div>
+      </a>
+      <a class="card" href="option-04-public-signal-monitor.html">
+        <div class="eyebrow">Option 04</div>
+        <h2>Public Signal Monitor</h2>
+        <p>Operational monitor style with pipeline status, recent crawl coverage, and alert-like review queues.</p>
+        <div class="tagrow"><span class="tag">live status</span><span class="tag">pipeline metrics</span><span class="tag">high contrast</span></div>
+      </a>
+      <a class="card" href="option-05-academic-paper.html">
+        <div class="eyebrow">Option 05</div>
+        <h2>Minimal Academic Paper</h2>
+        <p>Paper-like typography, restrained layout, and emphasis on caveats, provenance, and interpretation discipline.</p>
+        <div class="tagrow"><span class="tag">serif</span><span class="tag">minimal</span><span class="tag">provenance</span></div>
+      </a>
+      <a class="card" href="option-06-modern-data-product.html">
+        <div class="eyebrow">Option 06</div>
+        <h2>Modern Data Product</h2>
+        <p>Polished app-like interface with refined controls, filters, and chart surfaces while staying serious.</p>
+        <div class="tagrow"><span class="tag">app shell</span><span class="tag">filters</span><span class="tag">polished</span></div>
+      </a>
+    </section>
+
+    <footer>
+      Suggested navigation vocabulary: Overview, Weight Change, Side Effects, Methods, Data Status, Retatrutide, Tirzepatide, Semaglutide.
+    </footer>
+  </main>
+</body>
+</html>
