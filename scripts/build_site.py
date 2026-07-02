@@ -626,6 +626,61 @@ def side_effect_report_card(row: Any, effects: list[str], severity_by_effect: di
     }
 
 
+def clipped_quote(value: str | None, limit: int = 185) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip().strip("\"'")
+    text = text.replace('"', "").replace("“", "").replace("”", "")
+    text = re.sub(r"\s*\.\.\.\s*", " ... ", text)
+    if not text or text.lower() in {"n/a", "none", "null"}:
+        return ""
+    if len(text) <= limit:
+        return text
+    clipped = text[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,.;:")
+    return f"{clipped}..."
+
+
+def side_effect_severity_examples(explorer: dict[str, Any]) -> dict[str, dict[str, str]]:
+    examples: dict[str, dict[str, str]] = {}
+    reports = explorer.get("reports", {})
+    for report in reports.values():
+        for effect, severity_info in (report.get("severity_by_effect") or {}).items():
+            severity = severity_info.get("severity")
+            if severity not in {"mild", "severe"} or severity in examples:
+                continue
+            quote = clipped_quote(report.get("evidence")) or clipped_quote(report.get("text_excerpt"))
+            if not quote:
+                continue
+            examples[severity] = {
+                "effect": str(effect),
+                "quote": quote,
+                "url": str(report.get("url") or "#"),
+                "subreddit": str(report.get("subreddit") or "unknown"),
+            }
+        if {"mild", "severe"}.issubset(examples):
+            break
+    return examples
+
+
+def side_effect_examples_html(explorer: dict[str, Any]) -> str:
+    examples = side_effect_severity_examples(explorer)
+    cards = []
+    for severity in ("mild", "severe"):
+        example = examples.get(severity)
+        if not example:
+            continue
+        cards.append(
+            f"""
+        <figure class="severity-example severity-example-{severity}">
+          <figcaption>{severity.capitalize()} keyword example - {html.escape(example["effect"])} - r/{html.escape(example["subreddit"])}</figcaption>
+          <blockquote>{html.escape(example["quote"])}</blockquote>
+          <a class="reddit-link" href="{html.escape(example["url"])}" target="_blank" rel="noopener">Open Reddit URL</a>
+        </figure>
+"""
+        )
+    if not cards:
+        return ""
+    return f'      <div class="severity-examples">{"".join(cards)}      </div>'
+
+
 def side_effect_explorer_payload(rows: list[Any], mapping: dict[str, str]) -> dict[str, Any]:
     effect_counter: Counter[str] = Counter()
     severity_counts: dict[str, Counter[str]] = defaultdict(Counter)
@@ -1227,11 +1282,6 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
       </div>
       {rct_note}
       <p class="meta">Generated {html.escape(generated_at)}</p>
-      <div class="page-actions">
-        <a class="button primary" href="./">Weight Change</a>
-        <a class="button" href="side-effects.html">Side Effects</a>
-        <a class="button" href="../#compare">Compare Drugs</a>
-      </div>
     </section>
     <section class="plot-layout">
       <div class="plot-area">
@@ -1250,8 +1300,9 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
     return html_page(f"{name} Reddit Reports", body, asset_prefix="../")
 
 
-def render_side_effect_page(family: str, generated_at: str) -> str:
+def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, Any]) -> str:
     name = FAMILY_NAMES[family]
+    examples_html = side_effect_examples_html(explorer)
     body = f"""
 <body data-view="side-effects" data-family="{family}" data-json="../data/{family}.json">
   {site_header("../", active="effects")}
@@ -1260,13 +1311,13 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
       {family_tabs(family, current_view="effects")}
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Side-effect mentions</h1>
-      <p>{html.escape(FAMILY_COPY[family]["description"])} Frequency counts use explicit, auditable phrase normalization from <code>config/side_effect_normalization.json</code>. Severity is a prototype keyword screen until the follow-up LLM pass is added.</p>
-      <p class="meta">Generated {html.escape(generated_at)}</p>
-      <div class="page-actions">
-        <a class="button" href="./">Weight Change</a>
-        <a class="button primary" href="side-effects.html">Side Effects</a>
-        <a class="button" href="../#compare">Compare Drugs</a>
+      <div class="page-copy side-effect-page-copy">
+        <p>The side-effect view starts with the same single-item reading process as the weight plots. Each Reddit post or comment gets a first pass from gpt-5.4-nano, with flagged records eligible for a gpt-5.4-mini reread, and the extraction pulls concise side-effect phrases from the user's account. Code then normalizes obvious variants, so "sulfur burps" and "sulphur burps" can be counted together while the original Reddit text remains one click away.</p>
+        <p>The mild, moderate, and severe controls are deliberately provisional. They are not clinical adverse-event grades and they are not yet a second LLM judgment. They come from an auditable keyword screen over the extracted evidence, notes, and source text; "unscreened" means the current rules did not find enough language to place the report. The point is triage for reading, not diagnosis.</p>
+        <p>These groups are part help desk, part diary, part frontier clinic. Some users arrive thrilled by appetite quieting and rapid loss; others arrive nauseated, frightened, under-monitored, or trying to decide whether a symptom is ordinary, dangerous, or worth tolerating. Reddit may offer solidarity and practical information, but it can also amplify bad advice, sales pressure, and false certainty.</p>
+{examples_html}
       </div>
+      <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
     <section class="effect-toolbar" aria-label="Side-effect filters">
       <input id="effect-search" class="effect-search" type="search" placeholder="Search reports, notes, evidence">
@@ -1278,16 +1329,14 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
         <button type="button" class="segmented" data-severity="unscreened">Unscreened</button>
       </div>
     </section>
-    <section class="effect-story">
-      <div class="effect-hero-panel">
+    <section class="side-effect-grid">
+      <div class="effect-story">
         <div>
           <h2>Frequency</h2>
           <p id="effect-status" class="status">Loading side effects...</p>
         </div>
         <div id="effect-bars" class="effect-bars effect-bars-large"></div>
       </div>
-    </section>
-    <section class="side-effect-grid">
       <div class="effect-network-card">
         <h2>Co-occurrence</h2>
         <svg id="effect-network" class="effect-network" role="img" aria-label="{html.escape(name)} side-effect co-occurrence graph"></svg>
@@ -1321,11 +1370,6 @@ def render_concurrent_page(generated_at: str) -> str:
       <h1>Stacking/polypharmacy</h1>
       <p>Circular network of normalized compounds mentioned together in parsed Reddit reports. Edges connect compounds appearing in the same extracted report; stack-only mode restricts counts to reports marked as stacks by the parser.</p>
       <p class="meta">Generated {html.escape(generated_at)}</p>
-      <div class="page-actions">
-        <a class="button" href="../reta/">Retatrutide</a>
-        <a class="button" href="../tirz/">Tirzepatide</a>
-        <a class="button" href="../sema/">Semaglutide</a>
-      </div>
     </section>
     <section class="network-controls" aria-label="Network controls">
       <button type="button" class="segmented active" data-network-mode="all">All concurrent mentions</button>
@@ -1415,7 +1459,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
             encoding="utf-8",
         )
         (family_dir / "side-effects.html").write_text(
-            render_side_effect_page(family, generated_at),
+            render_side_effect_page(family, generated_at, payload["side_effect_explorer"]),
             encoding="utf-8",
         )
     concurrent_dir = site_dir / "concurrent"
