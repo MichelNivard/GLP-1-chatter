@@ -132,8 +132,8 @@ def site_header(asset_prefix: str = "", active: str = "overview", *, show_brand:
     brand = (
         f"""
       <a href="{html.escape(home)}" class="brand">
-        <strong>GLP-1 Reports Observatory</strong>
-        <span>Reddit user reports with caveated extraction and review</span>
+        <strong>GLP-1 Chatter</strong>
+        <span>Reddit, weight-loss drugs, and the new medical consumerism.</span>
       </a>"""
         if show_brand
         else ""
@@ -312,6 +312,35 @@ def load_reports(conn) -> list[Any]:
             """
         ).fetchall()
     )
+
+
+def load_side_effect_screenings(conn) -> dict[int, dict[str, dict[str, Any]]]:
+    rows = conn.execute(
+        """
+        SELECT
+          report_id,
+          side_effect_phrase,
+          severity,
+          confidence,
+          evidence,
+          rationale,
+          model,
+          screened_at
+        FROM side_effect_screenings
+        """
+    ).fetchall()
+    screenings: dict[int, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for row in rows:
+        screenings[int(row["report_id"])][row["side_effect_phrase"]] = {
+            "severity": row["severity"],
+            "source": "llm",
+            "confidence": row["confidence"],
+            "evidence": row["evidence"],
+            "rationale": row["rationale"],
+            "model": row["model"],
+            "screened_at": row["screened_at"],
+        }
+    return screenings
 
 
 def load_parsed_post_counts(conn) -> dict[str, int]:
@@ -530,76 +559,7 @@ def side_effect_counts(rows: list[Any], mapping: dict[str, str]) -> list[dict[st
     return [{"phrase": phrase, "count": count} for phrase, count in counter.most_common()]
 
 
-SEVERITY_KEYWORDS = {
-    "severe": [
-        "severe",
-        "extreme",
-        "unbearable",
-        "debilitating",
-        " er ",
-        "emergency",
-        "hospital",
-        "urgent care",
-        "couldn't keep",
-        "could not keep",
-        "dehydrated",
-        "dehydration",
-        "stopped because",
-        "discontinued because",
-    ],
-    "moderate": [
-        "moderate",
-        "bad",
-        "rough",
-        "strong",
-        "significant",
-        "persistent",
-        "daily",
-        "several days",
-        "worse",
-        "hard to",
-        "struggling",
-    ],
-    "mild": [
-        "mild",
-        "minor",
-        "slight",
-        "little",
-        "manageable",
-        "tolerable",
-        "occasional",
-        "not bad",
-        "went away",
-        "resolved",
-    ],
-}
-
-
-def estimate_side_effect_severity(row: Any, effect: str) -> dict[str, str]:
-    """Temporary severity proxy for page design; intended to be replaced by LLM screening."""
-
-    text = " ".join(
-        str(value or "")
-        for value in (
-            row["evidence"],
-            row["notes"],
-            row["processed_full_text"] or row["full_text"],
-        )
-    ).lower()
-    effect_text = effect.lower()
-    effect_index = text.find(effect_text)
-    if effect_index >= 0:
-        start = max(0, effect_index - 220)
-        end = min(len(text), effect_index + len(effect_text) + 220)
-        text = text[start:end]
-    padded = f" {text} "
-    for severity in ("severe", "moderate", "mild"):
-        if any(keyword in padded for keyword in SEVERITY_KEYWORDS[severity]):
-            return {"severity": severity, "source": "keyword_prototype"}
-    return {"severity": "unscreened", "source": "not_llm_screened"}
-
-
-def side_effect_report_card(row: Any, effects: list[str], severity_by_effect: dict[str, dict[str, str]]) -> dict[str, Any]:
+def side_effect_report_card(row: Any, effects: list[str], severity_by_effect: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return {
         "report_id": row["report_id"],
         "post_id": row["post_id"],
@@ -670,7 +630,7 @@ def side_effect_examples_html(explorer: dict[str, Any]) -> str:
         cards.append(
             f"""
         <figure class="severity-example severity-example-{severity}">
-          <figcaption>{severity.capitalize()} keyword example - {html.escape(example["effect"])} - r/{html.escape(example["subreddit"])}</figcaption>
+          <figcaption>{severity.capitalize()} LLM example - {html.escape(example["effect"])} - r/{html.escape(example["subreddit"])}</figcaption>
           <blockquote>{html.escape(example["quote"])}</blockquote>
           <a class="reddit-link" href="{html.escape(example["url"])}" target="_blank" rel="noopener">Open Reddit URL</a>
         </figure>
@@ -681,7 +641,11 @@ def side_effect_examples_html(explorer: dict[str, Any]) -> str:
     return f'      <div class="severity-examples">{"".join(cards)}      </div>'
 
 
-def side_effect_explorer_payload(rows: list[Any], mapping: dict[str, str]) -> dict[str, Any]:
+def side_effect_explorer_payload(
+    rows: list[Any],
+    mapping: dict[str, str],
+    screenings: dict[int, dict[str, dict[str, Any]]],
+) -> dict[str, Any]:
     effect_counter: Counter[str] = Counter()
     severity_counts: dict[str, Counter[str]] = defaultdict(Counter)
     effect_report_ids: dict[str, set[int]] = defaultdict(set)
@@ -695,7 +659,10 @@ def side_effect_explorer_payload(rows: list[Any], mapping: dict[str, str]) -> di
             continue
         report_id = int(row["report_id"])
         severity_by_effect = {
-            effect: estimate_side_effect_severity(row, effect)
+            effect: screenings.get(report_id, {}).get(
+                effect,
+                {"severity": "unscreened", "source": "not_screened"},
+            )
             for effect in effects
         }
         reports[report_id] = side_effect_report_card(row, effects, severity_by_effect)
@@ -736,8 +703,8 @@ def side_effect_explorer_payload(rows: list[Any], mapping: dict[str, str]) -> di
         "links": links_payload,
         "reports": {str(report_id): report for report_id, report in sorted(reports.items())},
         "severity_method": {
-            "status": "prototype",
-            "source": "keyword_prototype_until_llm_screening",
+            "status": "llm",
+            "source": "side_effect_screenings",
             "levels": ["mild", "moderate", "severe", "unscreened"],
         },
         "summary": {
@@ -1312,10 +1279,10 @@ def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, 
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Side-effect mentions</h1>
       <div class="page-copy side-effect-page-copy">
-        <p>The side-effect view starts with the same single-item reading process as the weight plots. Each Reddit post or comment gets a first pass from gpt-5.4-nano, with flagged records eligible for a gpt-5.4-mini reread, and the extraction pulls concise side-effect phrases from the user's account. Code then normalizes obvious variants, so "sulfur burps" and "sulphur burps" can be counted together while the original Reddit text remains one click away.</p>
-        <p>The mild, moderate, and severe controls are deliberately provisional. They are not clinical adverse-event grades and they are not yet a second LLM judgment. They come from an auditable keyword screen over the extracted evidence, notes, and source text; "unscreened" means the current rules did not find enough language to place the report. The point is triage for reading, not diagnosis.</p>
-        <p>These groups are part help desk, part diary, part frontier clinic. Some users arrive thrilled by appetite quieting and rapid loss; others arrive nauseated, frightened, under-monitored, or trying to decide whether a symptom is ordinary, dangerous, or worth tolerating. Reddit may offer solidarity and practical information, but it can also amplify bad advice, sales pressure, and false certainty.</p>
 {examples_html}
+        <p>The side-effect view starts with the same single-item reading process as the weight plots. Each Reddit post or comment gets a first pass from gpt-5.4-nano, with flagged records eligible for a gpt-5.4-mini reread, and the extraction pulls concise side-effect phrases from the user's account. A separate one-report LLM screen then labels each extracted phrase as mild, moderate, or severe. Code normalizes obvious variants, so "sulfur burps" and "sulphur burps" can be counted together while the original Reddit text remains one click away.</p>
+        <p>The labels are not clinical adverse-event grades. They are reader-facing triage for a noisy archive: mild when the report sounds limited or manageable, moderate when it becomes disruptive or persistent, and severe when the text points to danger, drug stopping, urgent care, inability to keep food or fluids down, or major impairment. "Unscreened" means the report has not yet received that severity pass.</p>
+        <p>Use the frequency list to select a specific side effect, the circular co-occurrence view to select pairs of symptoms that appear in the same report, and the severity buttons to narrow the archive to mild, moderate, or severe accounts. The report cards below then let you browse the source posts and full Reddit text, preserving the lived context people chose to share: excitement, fear, reassurance, practical advice, and sometimes vulnerability in a place that may or may not give them reliable support.</p>
       </div>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
@@ -1401,6 +1368,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     conn = connect_db(db_path)
     ensure_schema(conn)
     reports = load_reports(conn)
+    side_effect_screenings = load_side_effect_screenings(conn)
     parsed_counts = load_parsed_post_counts(conn)
     conn.close()
 
@@ -1426,7 +1394,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
             "points": points,
             "curve": smoothed_curve(points),
             "side_effects": effects,
-            "side_effect_explorer": side_effect_explorer_payload(rows, mapping),
+            "side_effect_explorer": side_effect_explorer_payload(rows, mapping, side_effect_screenings),
             "side_effect_normalization": mapping,
             "rct": rct or {"present": False, "rows": []},
         }

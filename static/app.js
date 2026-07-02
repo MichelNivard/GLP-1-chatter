@@ -247,7 +247,20 @@ function renderSideEffects(data) {
   }
 
   function severitySourceFor(report, effect) {
-    return report?.severity_by_effect?.[effect]?.source || "not_llm_screened";
+    const screening = report?.severity_by_effect?.[effect] || {};
+    if (screening.source === "llm") {
+      return screening.model ? `llm: ${screening.model}` : "llm";
+    }
+    return screening.source || "not_screened";
+  }
+
+  function severityRationaleFor(report, effect) {
+    return report?.severity_by_effect?.[effect]?.rationale || "n/a";
+  }
+
+  function severityConfidenceFor(report, effect) {
+    const confidence = report?.severity_by_effect?.[effect]?.confidence;
+    return Number.isFinite(Number(confidence)) ? Number(confidence).toFixed(2) : "n/a";
   }
 
   function activeEffects() {
@@ -516,7 +529,7 @@ function renderSideEffects(data) {
         <div><dt>Unscreened</dt><dd>${counts.unscreened || 0}</dd></div>
         <div><dt>Common co-mentions</dt><dd>${htmlEscape(topPartners)}</dd></div>
       </dl>
-      <p class="note">Severity is a prototype keyword label until a one-item follow-up LLM screen is added.</p>
+      <p class="note">Severity comes from a one-report LLM screen when available. Unscreened means the report is still waiting for that pass.</p>
     `;
   }
 
@@ -540,6 +553,8 @@ function renderSideEffects(data) {
           <summary>Extracted fields</summary>
           <dl class="detail-list compact">
             <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, primaryEffect))}</dd></div>
+            <div><dt>Severity confidence</dt><dd>${htmlEscape(severityConfidenceFor(report, primaryEffect))}</dd></div>
+            <div><dt>Severity rationale</dt><dd>${htmlEscape(severityRationaleFor(report, primaryEffect))}</dd></div>
             <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
             <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
             <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>

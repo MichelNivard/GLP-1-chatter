@@ -139,6 +139,53 @@ CREATE INDEX IF NOT EXISTS idx_reports_family
 CREATE INDEX IF NOT EXISTS idx_reports_hash
   ON extracted_reports(content_hash, source_pass);
 
+CREATE TABLE IF NOT EXISTS side_effect_screening_runs (
+  report_id INTEGER PRIMARY KEY,
+  post_id INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  model TEXT NOT NULL,
+  prompt_version TEXT NOT NULL,
+  prompt_cache_key TEXT,
+  status TEXT NOT NULL CHECK (status IN ('parsed', 'error', 'no_effects')),
+  result_json TEXT,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  cached_prompt_tokens INTEGER,
+  usage_json TEXT,
+  error TEXT,
+  screened_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (report_id) REFERENCES extracted_reports(report_id) ON DELETE CASCADE,
+  FOREIGN KEY (post_id) REFERENCES raw_posts(post_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_side_effect_screening_runs_status
+  ON side_effect_screening_runs(status, updated_at);
+
+CREATE TABLE IF NOT EXISTS side_effect_screenings (
+  screening_id INTEGER PRIMARY KEY,
+  report_id INTEGER NOT NULL,
+  post_id INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  side_effect_phrase TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK (severity IN ('mild', 'moderate', 'severe')),
+  confidence REAL,
+  evidence TEXT,
+  rationale TEXT,
+  model TEXT NOT NULL,
+  screened_at TEXT NOT NULL,
+  raw_json TEXT NOT NULL,
+  FOREIGN KEY (report_id) REFERENCES extracted_reports(report_id) ON DELETE CASCADE,
+  FOREIGN KEY (post_id) REFERENCES raw_posts(post_id) ON DELETE CASCADE,
+  UNIQUE (report_id, side_effect_phrase)
+);
+
+CREATE INDEX IF NOT EXISTS idx_side_effect_screenings_report
+  ON side_effect_screenings(report_id);
+CREATE INDEX IF NOT EXISTS idx_side_effect_screenings_phrase
+  ON side_effect_screenings(side_effect_phrase, severity);
+
 CREATE TABLE IF NOT EXISTS crawl_state (
   crawl_key TEXT PRIMARY KEY,
   source_backend TEXT NOT NULL,

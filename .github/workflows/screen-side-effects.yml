@@ -1,0 +1,78 @@
+name: Screen side-effect severity
+
+on:
+  workflow_run:
+    workflows: ["Parse Reddit candidates"]
+    types: [completed]
+  schedule:
+    - cron: "17 5,17 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum reports to screen; 0 means no limit"
+        required: false
+        default: "0"
+      retry_errors:
+        description: "Retry reports with previous screening errors"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glp1-db-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screen:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Initialize database
+        run: python scripts/init_db.py
+      - name: Screen side-effect severity one report per API call
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          screen_limit="${{ github.event.inputs.limit || '0' }}"
+          args=(
+            --limit "$screen_limit"
+            --model gpt-5.4-nano
+            --prompt-cache-retention 24h
+          )
+          if [ "${{ github.event.inputs.retry_errors || 'false' }}" = "true" ]; then
+            args+=(--retry-errors)
+          fi
+          python scripts/screen_side_effects.py "${args[@]}"
+      - name: Commit screened database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/glp1_reports.sqlite3
+          if git diff --cached --quiet; then
+            echo "No side-effect screening changes to commit."
+          else
+            git commit -m "Screen side-effect severity"
+            branch="${GITHUB_REF_NAME:-master}"
+            pushed=false
+            for attempt in 1 2 3; do
+              git pull --rebase origin "$branch"
+              if git push; then
+                pushed=true
+                break
+              fi
+              echo "Push failed on attempt $attempt; retrying after rebase."
+              sleep $((attempt * 10))
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "Failed to push side-effect screening update after retries." >&2
+              exit 1
+            fi
+          fi

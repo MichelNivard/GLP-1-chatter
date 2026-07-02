@@ -92,13 +92,15 @@ a {
 }
 
 .brand strong {
-  font-size: 1.08rem;
-  font-weight: 850;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.34rem;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .brand span {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .home,
@@ -112,6 +114,12 @@ a {
 .link-band,
 .table-section {
   padding: 1.5rem 0;
+}
+
+.page-heading h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .page-copy {
@@ -134,11 +142,18 @@ a {
 }
 
 .severity-examples {
+  float: right;
   display: grid;
   gap: 0.8rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 1rem 0 0.25rem;
-  max-width: 980px;
+  grid-template-columns: 1fr;
+  margin: 0.2rem 0 1rem 1.35rem;
+  width: clamp(310px, 34vw, 440px);
+}
+
+.side-effect-page-copy::after {
+  clear: both;
+  content: "";
+  display: block;
 }
 
 .severity-example {
@@ -1813,6 +1828,12 @@ th {
   .severity-examples,
   .effect-feed {
     grid-template-columns: 1fr;
+  }
+
+  .severity-examples {
+    float: none;
+    margin: 1rem 0;
+    width: auto;
   }
 
   .detail-panel {

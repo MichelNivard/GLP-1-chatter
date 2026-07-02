@@ -2,7 +2,7 @@ name: Build and publish Pages site
 
 on:
   workflow_run:
-    workflows: ["Parse Reddit candidates"]
+    workflows: ["Parse Reddit candidates", "Screen side-effect severity"]
     types: [completed]
   push:
     branches: [master, main]

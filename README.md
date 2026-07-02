@@ -88,6 +88,28 @@ Useful flags:
 
 The parser sends exactly one Reddit post/comment per OpenAI API call. It uses a stable prompt prefix plus a varying per-post user message, and sets `prompt_cache_key` so repeated calls can benefit from OpenAI prompt caching. Cached-token usage is stored in `parse_cache` when returned by the API.
 
+## Local Side-Effect Severity Screening
+
+After extraction, screen side-effect severity with one canonical extracted report per OpenAI API call:
+
+```bash
+python scripts/screen_side_effects.py --limit 50
+```
+
+Default model:
+
+- Severity screen: `gpt-5.4-nano`
+
+Useful flags:
+
+- `--limit 0`
+- `--dry-run`
+- `--retry-errors`
+- `--prompt-cache-key glp1-severity`
+- `--prompt-cache-retention 24h`
+
+The screen writes report-level status to `side_effect_screening_runs` and one row per normalized side-effect phrase to `side_effect_screenings`. Missing rows appear as `unscreened` on the website.
+
 ## Processing Semantics
 
 The raw Reddit item identity is authoritative:
@@ -182,7 +204,7 @@ Included retatrutide overlay data in `trial-data/trial-reta.csv` were digitized 
 
 ## Side-Effect Normalization
 
-Side effects are extracted as lowercase phrases by the LLM, then normalized in code using `config/side_effect_normalization.json`. Keep this mapping explicit and auditable.
+Side effects are extracted as lowercase phrases by the LLM, then normalized in code using `config/side_effect_normalization.json`. Keep this mapping explicit and auditable. Severity labels are assigned by `scripts/screen_side_effects.py` after extraction and are reader-facing triage labels, not clinical adverse-event grades.
 
 ## GitHub Actions
 
@@ -191,6 +213,7 @@ Workflows:
 - `.github/workflows/crawl.yml`: scheduled daily at 03:18 UTC and manual dispatch. Crawls recent candidates, default last 7 days, and commits DB changes.
 - `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-07-09T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
 - `.github/workflows/parse.yml`: runs after crawl, on schedule, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Parses one pending post/comment per API call and commits DB changes.
+- `.github/workflows/screen-side-effects.yml`: runs after parse, every 12 hours, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Screens one canonical extracted report per API call for side-effect severity and commits DB changes.
 - `.github/workflows/pages.yml`: rebuilds the static site from SQLite and deploys to GitHub Pages.
 
 Repository setup:
@@ -212,12 +235,16 @@ Main tables:
 - `raw_posts`: raw Reddit candidate posts/comments, full text, URL, match terms, post-level parse status, processed text/hash marker, drift flag, parse/rescreen metadata.
 - `parse_cache`: one first-pass parse and one rescreen parse per processed content hash, with model, prompt version, cache key, token usage, status, result JSON, converted JSON, and error text.
 - `extracted_reports`: one or more extracted drug reports per raw post/comment, including raw values and computed kg/day/week values. Rescreened reports become canonical while first-pass reports are retained as non-canonical when feasible.
+- `side_effect_screening_runs`: one LLM severity-screen status row per canonical extracted report.
+- `side_effect_screenings`: one LLM severity label per normalized side-effect phrase in a screened report.
 
 ## Files
 
 - `scripts/crawl_reddit.py`: slow Reddit/PullPush crawler.
 - `scripts/parse_reports.py`: one-item-per-call OpenAI parser with strict JSON validation.
+- `scripts/screen_side_effects.py`: one-report-per-call side-effect severity screener with strict JSON validation.
 - `scripts/build_site.py`: SQLite-to-static-site generator.
 - `prompts/extract_glp1_report.md`: extraction prompt under 3000 words.
+- `prompts/screen_side_effect_severity.md`: severity-screening prompt.
 - `static/app.js`, `static/styles.css`: dependency-free browser UI.
 - `config/*.json`: sources, search terms, side-effect normalization.
