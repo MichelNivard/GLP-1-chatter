@@ -276,8 +276,18 @@ p {
   font-style: italic;
   font-weight: 400;
   line-height: 1.4;
-  margin-bottom: 0;
+  margin-bottom: 0.65rem;
   max-width: 760px;
+}
+
+.essay-author {
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  margin-bottom: 0;
+  text-transform: uppercase;
 }
 
 .home-essay > p {
@@ -328,12 +338,12 @@ p {
 .story-snapshot-left {
   clear: both;
   float: left;
-  margin: 2.35rem 1.45rem 1.25rem 0;
+  margin: 6.5rem 1.85rem 3.5rem 0;
 }
 
 .story-snapshot.family-reta {
   clear: both;
-  margin-top: 2.35rem;
+  margin-top: 6.25rem;
 }
 
 .story-snapshot h2 {
@@ -430,6 +440,33 @@ p {
 
 .home-footnotes p {
   max-width: 820px;
+}
+
+.home-story-quote {
+  color: #343832;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1em;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.home-story-quote-vulnerable {
+  color: #303253;
+}
+
+.home-story-source {
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.home-story-source a {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
 }
 
 .route-panel,
@@ -896,6 +933,12 @@ dd {
   align-items: start;
 }
 
+.plot-afterword {
+  border-top: 1px solid var(--line);
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+}
+
 .network-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
@@ -989,6 +1032,25 @@ dd {
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.stacking-quotes {
+  float: right;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+  margin: 0.2rem 0 1rem 1.35rem;
+  width: clamp(300px, 34vw, 440px);
+}
+
+.stacking-quotes .testimonial {
+  margin: 0;
+}
+
+.stacking-copy::after {
+  clear: both;
+  content: "";
+  display: block;
 }
 
 .detail-panel > .testimonial {
@@ -1494,6 +1556,84 @@ dd {
   position: static;
 }
 
+.effect-summary-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.effect-summary-head {
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+  padding-bottom: 0.45rem;
+}
+
+.effect-summary-head h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 2.5vw, 2.25rem);
+  font-weight: 500;
+  line-height: 1;
+  margin: 0;
+}
+
+.effect-summary-kicker {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.effect-summary-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.effect-summary-metrics span,
+.co-mention-strip span {
+  align-items: baseline;
+  background: #f7f6f1;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #4a4f47;
+  display: inline-flex;
+  font-size: 0.86rem;
+  gap: 0.35rem;
+  line-height: 1.2;
+  padding: 0.32rem 0.6rem;
+}
+
+.effect-summary-metrics b,
+.co-mention-strip b {
+  color: var(--ink);
+  font-size: 0.98rem;
+}
+
+.co-mention-strip {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.co-mention-strip > strong {
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  margin-right: 0.1rem;
+  text-transform: uppercase;
+}
+
+.effect-summary-card .note {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .effect-ring {
   fill: none;
   pointer-events: none;
@@ -1860,6 +2000,12 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .stacking-quotes {
+    float: none;
+    margin: 1rem 0;
+    width: 100%;
+  }
+
   .header-inner {
     align-items: flex-start;
     padding: 0.9rem 1rem;
@@ -1904,6 +2050,14 @@ th {
     margin: 1.1rem 0 1.25rem;
     max-width: none;
     width: 100%;
+  }
+
+  .story-snapshot.family-tirz {
+    margin: 6.25rem 0 4.25rem;
+  }
+
+  .story-snapshot.family-reta {
+    margin: 5.75rem 0 1.25rem;
   }
 }
 

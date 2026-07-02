@@ -1,14 +1,18 @@
 const NS = "http://www.w3.org/2000/svg";
 
+function displayText(value) {
+  return String(value ?? "").replaceAll("—", ", ");
+}
+
 function el(name, attrs = {}, text = "") {
   const node = document.createElementNS(NS, name);
   Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
-  if (text) node.textContent = text;
+  if (text) node.textContent = displayText(text);
   return node;
 }
 
 function htmlEscape(value) {
-  return String(value ?? "")
+  return displayText(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -25,6 +29,8 @@ const FAMILY_NAMES = {
   tirz: "Tirzepatide",
   sema: "Semaglutide",
 };
+
+const MAX_PLOTTED_WEIGHT_GAIN_KG = 10;
 
 function familyName(family) {
   return FAMILY_NAMES[family] || family || "unknown drug";
@@ -142,6 +148,11 @@ function renderScatter(data) {
   const svg = document.getElementById("scatterplot");
   const status = document.getElementById("plot-status");
   const points = data.points || [];
+  const plottedPoints = points.filter((point) => {
+    const weeks = Number(point.duration_weeks);
+    const change = Number(point.weight_change_kg);
+    return Number.isFinite(weeks) && Number.isFinite(change) && change <= MAX_PLOTTED_WEIGHT_GAIN_KG;
+  });
   const rctSeries = data.rct?.series?.length
     ? data.rct.series
     : (data.rct?.rows?.length ? [{ label: "RCT", rows: data.rct.rows }] : []);
@@ -153,20 +164,20 @@ function renderScatter(data) {
   ];
   svg.innerHTML = "";
 
-  if (!points.length && !rctSeries.length) {
+  if (!plottedPoints.length && !rctSeries.length) {
     status.textContent = "No plottable reports yet.";
     svg.setAttribute("viewBox", "0 0 900 520");
     return;
   }
-  status.textContent = points.length ? "" : "No plottable Reddit reports yet; showing trial overlay.";
+  status.textContent = plottedPoints.length ? "" : "No plottable Reddit reports within the plotted range yet; showing trial overlay.";
 
   const width = 920;
   const height = 560;
-  const margin = { top: 72, right: 38, bottom: 70, left: 86 };
+  const margin = { top: 84, right: 38, bottom: 70, left: 86 };
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  let xValues = points.map((point) => Number(point.duration_weeks));
-  let yValues = points.map((point) => Number(point.weight_change_kg));
+  let xValues = plottedPoints.map((point) => Number(point.duration_weeks));
+  let yValues = plottedPoints.map((point) => Number(point.weight_change_kg));
   data.curve?.forEach((point) => {
     xValues.push(Number(point.weeks));
     yValues.push(Number(point.weight_change_kg));
@@ -187,27 +198,36 @@ function renderScatter(data) {
   let xDomainMin = Math.min(0, ...xValues);
   let xDomainMax = Math.max(...xValues);
   let yDomainMin = Math.min(0, ...yValues);
-  let yDomainMax = Math.max(0, ...yValues);
+  let yDomainMax = MAX_PLOTTED_WEIGHT_GAIN_KG;
   if (xDomainMin === xDomainMax) xDomainMax += 1;
   if (yDomainMin === yDomainMax) {
     yDomainMin -= 1;
-    yDomainMax += 1;
   }
   xDomainMax += (xDomainMax - xDomainMin) * 0.04;
-  const yPad = (yDomainMax - yDomainMin) * 0.08;
+  const yPad = (yDomainMax - yDomainMin) * 0.06;
   yDomainMin -= yPad;
-  yDomainMax += yPad;
   const xTickValues = niceTicks(xDomainMin, xDomainMax, 6);
-  const yTickValues = niceTicks(yDomainMin, yDomainMax, 7);
+  const yTickValues = niceTicks(yDomainMin, yDomainMax, 7)
+    .filter((value) => value <= MAX_PLOTTED_WEIGHT_GAIN_KG);
+  if (!yTickValues.includes(MAX_PLOTTED_WEIGHT_GAIN_KG)) {
+    yTickValues.push(MAX_PLOTTED_WEIGHT_GAIN_KG);
+    yTickValues.sort((a, b) => a - b);
+  }
   const xMin = Math.min(xDomainMin, ...xTickValues);
   const xMax = Math.max(xDomainMax, ...xTickValues);
   const yMin = Math.min(yDomainMin, ...yTickValues);
-  const yMax = Math.max(yDomainMax, ...yTickValues);
+  const yMax = MAX_PLOTTED_WEIGHT_GAIN_KG;
   const plotW = width - margin.left - margin.right;
   const plotH = height - margin.top - margin.bottom;
   const xScale = (value) => margin.left + ((value - xMin) / (xMax - xMin)) * plotW;
   const yScale = (value) => margin.top + (1 - (value - yMin) / (yMax - yMin)) * plotH;
 
+  const clipId = `plot-clip-${data.family || "drug"}`;
+  const defs = el("defs");
+  const clipPath = el("clipPath", { id: clipId });
+  clipPath.appendChild(el("rect", { x: margin.left, y: margin.top, width: plotW, height: plotH }));
+  defs.appendChild(clipPath);
+  svg.appendChild(defs);
   svg.appendChild(el("rect", { x: margin.left, y: margin.top, width: plotW, height: plotH, class: "plot-bg" }));
 
   yTickValues.forEach((value) => {
@@ -227,21 +247,22 @@ function renderScatter(data) {
   svg.appendChild(el("text", { x: margin.left, y: 34, "text-anchor": "start", class: "axis-title" }, "Weight change (kg)"));
   svg.appendChild(el("text", { x: margin.left + plotW, y: height - 10, "text-anchor": "end", class: "axis-title" }, "Duration (weeks)"));
 
+  const dataLayer = el("g", { "clip-path": `url(#${clipId})` });
   rctSeries.forEach((series, index) => {
     const rows = series.rows || [];
     if (rows.length < 2) return;
     const colors = rctPalette[index % rctPalette.length];
     const upper = rows.map((point) => `${xScale(point.weeks).toFixed(2)},${yScale(point.upper).toFixed(2)}`).join(" ");
     const lower = [...rows].reverse().map((point) => `${xScale(point.weeks).toFixed(2)},${yScale(point.lower).toFixed(2)}`).join(" ");
-    svg.appendChild(el("polygon", { points: `${upper} ${lower}`, class: "rct-band", style: `fill:${colors.band}` }));
-    svg.appendChild(el("path", { d: pathFrom(rows, xScale, yScale, "weeks", "mean"), class: "rct-line", style: `stroke:${colors.line}` }));
+    dataLayer.appendChild(el("polygon", { points: `${upper} ${lower}`, class: "rct-band", style: `fill:${colors.band}` }));
+    dataLayer.appendChild(el("path", { d: pathFrom(rows, xScale, yScale, "weeks", "mean"), class: "rct-line", style: `stroke:${colors.line}` }));
   });
 
   if (data.curve?.length >= 2) {
-    svg.appendChild(el("path", { d: pathFrom(data.curve, xScale, yScale, "weeks", "weight_change_kg"), class: "fit-line" }));
+    dataLayer.appendChild(el("path", { d: pathFrom(data.curve, xScale, yScale, "weeks", "weight_change_kg"), class: "fit-line" }));
   }
 
-  points.forEach((point) => {
+  plottedPoints.forEach((point) => {
     const circle = el("circle", {
       cx: xScale(point.duration_weeks),
       cy: yScale(point.weight_change_kg),
@@ -253,18 +274,19 @@ function renderScatter(data) {
     circle.addEventListener("mouseenter", () => renderDetail(point));
     circle.addEventListener("focus", () => renderDetail(point));
     circle.appendChild(el("title", {}, `${fmt(point.duration_weeks, 1)} weeks, ${fmt(point.weight_change_kg, 1)} kg`));
-    svg.appendChild(circle);
+    dataLayer.appendChild(circle);
   });
+  svg.appendChild(dataLayer);
 
   const legend = el("g", { class: "legend" });
-  legend.appendChild(el("circle", { cx: width - 288, cy: 24, r: 4.7, class: `point point-${data.family}` }));
-  legend.appendChild(el("text", { x: width - 275, y: 28 }, "Reddit reports"));
-  legend.appendChild(el("line", { x1: width - 288, x2: width - 262, y1: 47, y2: 47, class: "fit-line" }));
-  legend.appendChild(el("text", { x: width - 253, y: 51 }, "Reddit smoothed fit"));
+  legend.appendChild(el("circle", { cx: width - 288, cy: 18, r: 4.7, class: `point point-${data.family}` }));
+  legend.appendChild(el("text", { x: width - 275, y: 22 }, "Reddit reports"));
+  legend.appendChild(el("line", { x1: width - 288, x2: width - 262, y1: 39, y2: 39, class: "fit-line" }));
+  legend.appendChild(el("text", { x: width - 253, y: 43 }, "Reddit smoothed fit"));
   rctSeries.forEach((series, index) => {
     const rows = series.rows || [];
     if (rows.length < 2) return;
-    const y = 69 + index * 22;
+    const y = 60 + index * 20;
     const colors = rctPalette[index % rctPalette.length];
     legend.appendChild(el("line", { x1: width - 288, x2: width - 262, y1: y, y2: y, class: "rct-line", style: `stroke:${colors.line}` }));
     legend.appendChild(el("text", { x: width - 253, y: y + 4 }, `${series.label} RCT mean +/- 1.96 SD`));
@@ -549,14 +571,19 @@ function renderSideEffects(data) {
     if (selectedPair) {
       const reportsWithPair = selectedPair.report_ids?.length || 0;
       detail.innerHTML = `
-        <h2>${htmlEscape(selectionLabel())}</h2>
-        <dl class="detail-list">
-          <div><dt>Co-occurrence reports</dt><dd>${reportsWithPair}</dd></div>
-          <div><dt>Visible reports</dt><dd>${filteredReports.length}</dd></div>
-          <div><dt>Side effect 1</dt><dd>${htmlEscape(selectedPair.source)}</dd></div>
-          <div><dt>Side effect 2</dt><dd>${htmlEscape(selectedPair.target)}</dd></div>
-        </dl>
-        <p class="note">Path selections show reports where both side effects were extracted from the same Reddit item.</p>
+        <div class="effect-summary-card">
+          <div class="effect-summary-head">
+            <span class="effect-summary-kicker">Selected co-occurrence</span>
+            <h2>${htmlEscape(selectionLabel())}</h2>
+          </div>
+          <div class="effect-summary-metrics" aria-label="Co-occurrence summary">
+            <span><b>${reportsWithPair}</b> co-occurrence reports</span>
+            <span><b>${filteredReports.length}</b> visible</span>
+            <span>${htmlEscape(selectedPair.source)}</span>
+            <span>${htmlEscape(selectedPair.target)}</span>
+          </div>
+          <p class="note">Reports below mention both extracted side effects in the same Reddit item.</p>
+        </div>
       `;
       return;
     }
@@ -570,20 +597,33 @@ function renderSideEffects(data) {
       .filter((link) => link.source === selectedEffect || link.target === selectedEffect)
       .sort((a, b) => b.count - a.count)
       .slice(0, 6)
-      .map((link) => `${link.source === selectedEffect ? link.target : link.source} (${link.count})`)
-      .join("; ") || "none";
+      .map((link) => ({
+        phrase: link.source === selectedEffect ? link.target : link.source,
+        count: link.count,
+      }));
+    const coMentionHtml = topPartners.length
+      ? topPartners.map((partner) => `<span>${htmlEscape(partner.phrase)} <b>${partner.count}</b></span>`).join("")
+      : "<span>none</span>";
     detail.innerHTML = `
-      <h2>${htmlEscape(selectedEffect)}</h2>
-      <dl class="detail-list">
-        <div><dt>Total reports</dt><dd>${effect.count}</dd></div>
-        <div><dt>Visible reports</dt><dd>${filteredReports.length}</dd></div>
-        <div><dt>Mild</dt><dd>${counts.mild || 0}</dd></div>
-        <div><dt>Moderate</dt><dd>${counts.moderate || 0}</dd></div>
-        <div><dt>Severe</dt><dd>${counts.severe || 0}</dd></div>
-        <div><dt>Unscreened</dt><dd>${counts.unscreened || 0}</dd></div>
-        <div><dt>Common co-mentions</dt><dd>${htmlEscape(topPartners)}</dd></div>
-      </dl>
-      <p class="note">Severity comes from a one-report LLM screen when available. Unscreened means the report is still waiting for that pass.</p>
+      <div class="effect-summary-card">
+        <div class="effect-summary-head">
+          <span class="effect-summary-kicker">Selected side effect</span>
+          <h2>${htmlEscape(selectedEffect)}</h2>
+        </div>
+        <div class="effect-summary-metrics" aria-label="Side-effect summary">
+          <span><b>${effect.count}</b> total</span>
+          <span><b>${filteredReports.length}</b> visible</span>
+          <span><b>${counts.mild || 0}</b> mild</span>
+          <span><b>${counts.moderate || 0}</b> moderate</span>
+          <span><b>${counts.severe || 0}</b> severe</span>
+          <span><b>${counts.unscreened || 0}</b> unscreened</span>
+        </div>
+        <div class="co-mention-strip" aria-label="Common co-mentions">
+          <strong>Co-mentions</strong>
+          ${coMentionHtml}
+        </div>
+        <p class="note">Severity labels appear after the one-report screen; unscreened reports are still waiting.</p>
+      </div>
     `;
   }
 

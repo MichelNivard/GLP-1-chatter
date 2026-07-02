@@ -8,6 +8,7 @@ import csv
 import html
 import json
 import math
+import os
 import re
 import shutil
 import statistics
@@ -34,6 +35,16 @@ FAMILY_NAMES = {
     "tirz": "Tirzepatide",
     "sema": "Semaglutide",
 }
+
+SITE_URL = os.environ.get("SITE_URL", "https://michelnivard.github.io/GLP-1-chatter").rstrip("/")
+SOCIAL_TITLE = "GLP-1 Chatter"
+SOCIAL_DESCRIPTION = (
+    "A self-updating map of Reddit user reports about semaglutide, tirzepatide, "
+    "retatrutide, side effects, weight change, and stacking."
+)
+SOCIAL_IMAGE_PATH = "assets/social-preview.png"
+
+MAX_PLOTTED_WEIGHT_GAIN_KG = 10.0
 
 FAMILY_COPY = {
     "reta": {
@@ -280,7 +291,7 @@ def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
     y_min = min(y_values) if len(y_values) < 30 else _quantile(y_values, 0.05)
     y_max = max(y_values) if len(y_values) < 30 else _quantile(y_values, 0.95)
     y_min = min(y_min, 0.0)
-    y_max = max(y_max, 0.0)
+    y_max = MAX_PLOTTED_WEIGHT_GAIN_KG
     x_span = x_max - x_min
     y_span = y_max - y_min
     if x_span == 0:
@@ -289,16 +300,19 @@ def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
         x_max += x_span * 0.06
     if y_span == 0:
         y_min -= 1
-        y_max += 1
+        y_max = MAX_PLOTTED_WEIGHT_GAIN_KG
     else:
         y_min -= y_span * 0.10
-        y_max += y_span * 0.10
+        y_max = MAX_PLOTTED_WEIGHT_GAIN_KG
     x_ticks = _nice_ticks(x_min, x_max, 4)
-    y_ticks = _nice_ticks(y_min, y_max, 5)
+    y_ticks = [tick for tick in _nice_ticks(y_min, y_max, 5) if tick <= MAX_PLOTTED_WEIGHT_GAIN_KG]
+    if MAX_PLOTTED_WEIGHT_GAIN_KG not in y_ticks:
+        y_ticks.append(MAX_PLOTTED_WEIGHT_GAIN_KG)
+        y_ticks.sort()
     x_min = min(x_min, *x_ticks)
     x_max = max(x_max, *x_ticks)
     y_min = min(y_min, *y_ticks)
-    y_max = max(y_max, *y_ticks)
+    y_max = MAX_PLOTTED_WEIGHT_GAIN_KG
 
     def x_pos(value: float) -> float:
         return _plot_scale(value, x_min, x_max, left, width - right)
@@ -1054,17 +1068,51 @@ def build_concurrent_payload(rows: list[Any], generated_at: str) -> dict[str, An
 def copy_assets(site_dir: Path) -> None:
     assets_dir = site_dir / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
-    for asset in ("styles.css", "app.js"):
+    for asset in ("styles.css", "app.js", "social-preview.png"):
         shutil.copy2(ROOT / "static" / asset, assets_dir / asset)
 
 
-def html_page(title: str, body: str, asset_prefix: str = "") -> str:
+def absolute_site_url(path: str = "") -> str:
+    clean_path = path.lstrip("/")
+    if clean_path:
+        return f"{SITE_URL}/{clean_path}"
+    return f"{SITE_URL}/"
+
+
+def html_page(
+    title: str,
+    body: str,
+    asset_prefix: str = "",
+    description: str = SOCIAL_DESCRIPTION,
+    page_path: str = "",
+) -> str:
+    page_title = title if title == SOCIAL_TITLE else f"{title} | {SOCIAL_TITLE}"
+    canonical_url = absolute_site_url(page_path)
+    image_url = absolute_site_url(SOCIAL_IMAGE_PATH)
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{html.escape(title)}</title>
+  <title>{html.escape(page_title)}</title>
+  <meta name="description" content="{html.escape(description)}">
+  <link rel="canonical" href="{html.escape(canonical_url)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{html.escape(SOCIAL_TITLE)}">
+  <meta property="og:title" content="{html.escape(page_title)}">
+  <meta property="og:description" content="{html.escape(description)}">
+  <meta property="og:url" content="{html.escape(canonical_url)}">
+  <meta property="og:image" content="{html.escape(image_url)}">
+  <meta property="og:image:secure_url" content="{html.escape(image_url)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="GLP-1 Chatter, Reddit user reports about weight-loss drugs and medical consumerism.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{html.escape(page_title)}">
+  <meta name="twitter:description" content="{html.escape(description)}">
+  <meta name="twitter:image" content="{html.escape(image_url)}">
+  <meta name="twitter:image:alt" content="GLP-1 Chatter, Reddit user reports about weight-loss drugs and medical consumerism.">
   <link rel="stylesheet" href="{asset_prefix}assets/styles.css">
 </head>
 {body}
@@ -1124,19 +1172,24 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
       <header class="essay-header">
         <h1>GLP-1 Chatter</h1>
         <p class="essay-deck">Reddit, weight-loss drugs, and the new medical consumerism.</p>
+        <p class="essay-author">Author: Michel Nivard</p>
       </header>
 
-      <p class="essay-lede">My interest in the rise of the new wave of highly effective weight-loss drugs, GLP-1-based medicines and related incretin drugs, is both scientific and personal. I first used a GLP-1 drug for weight loss in 2022, after reading promising trial evidence. It worked. The effect was immediate enough, and convincing enough, that I also bought shares in Novo Nordisk and Eli Lilly. My own experience was positive, and I still think these drugs are remarkable. For many people they are not merely another diet aid, but a profound intervention in appetite, weight, health, self-image, and agency.</p>
+      <p class="essay-lede">My interest in the rise of the new wave of highly effective weight-loss drugs, GLP-1-based medicines and related incretin drugs, is both scientific and personal. I first used a GLP-1 drug for weight loss in 2022, after reading promising trial evidence. It worked. The effect was immediate enough, and convincing enough, that I also bought shares in Novo Nordisk and Eli Lilly, though for full transparency I do not currently hold any stock in medical companies nor other ETFs or financial products focused on medicine. In my day job I am a professor of genetic epidemiology at the University of Bristol. My own experience was positive, and I still think these drugs are remarkable. For many people they are not merely another diet aid, but a profound intervention in appetite, weight, health, self-image, and agency.</p>
 
       {snapshot("sema", 1, "right")}
 
-      <p>But their success has also exposed a much stranger and more difficult reality. A critical segment of medicine is being reorganized around motivated consumers, uneven access, online knowledge, and variable risk tolerance. Some people obtain these drugs through conventional medical care. Some go through brief online prescribing pathways. Some use compounding pharmacies. Others enter the much murkier world of research peptides, gray-market suppliers, and drugs that have not yet completed regulatory approval.</p>
+      <p>But their success has also exposed a much stranger and more difficult reality. A critical segment of medicine is being reorganized around motivated consumers, uneven access, online knowledge, and variable risk tolerance. Some people obtain these drugs through conventional medical care. Some go through brief online prescribing pathways. Some use compounding pharmacies. Others enter the much murkier world of research peptides, gray-market suppliers, and drugs that have not yet completed regulatory approval. A <a href="https://www.bnnvara.nl/zembla/artikelen/lekken-in-medicijnketen-zwaar-verslavende-pijnstillers-volop-verhandeld-op-zwarte-markt" target="_blank" rel="noopener">2026 Zembla investigation</a> into leaked prescription opioids shows the broader infrastructure risk: real medicines can move from regulated supply chains into Telegram and WhatsApp dealer networks. More directly, Belgium's medicines regulator <a href="https://www-fagg-be.translate.goog/nl/news/het_fagg_waarschuwt_voor_illegale_verkoop_van_glp_1_analogen_via_sociale_media?_x_tr_sl=auto&amp;_x_tr_tl=en&amp;_x_tr_hl=en&amp;_x_tr_pto=wapp" target="_blank" rel="noopener">warns about illegal social-media sales of GLP-1 analogues</a>, including fraudulent ads and products with no reliable quality control, traceability, composition, or dosing. The GLP-1 and peptide world is not the opioid market, but it increasingly has to be understood against that same background of online drug channels, informal sourcing, and medical commodities moving outside ordinary supervision.</p>
 
       {snapshot("tirz", 2, "left")}
 
       <p>Reddit has become one of the places where this transition is visible in real time. On communities such as r/Semaglutide, r/Zepbound, r/Tirzepatide, and r/Peptides, people compare doses, side effects, weight-loss trajectories, plateaus, hunger, nausea, constipation, fatigue, hair loss, gallbladder worries, mood changes, and combinations with other medications. Some users are scientifically literate and deliberately experimental. Some are desperate, anxious, under-informed, or unable to access care through ordinary channels. Some posts are careful self-reports. Others may be contaminated by hype, misinformation, commercial interests, or outright peptide sales activity.</p>
 
-      <p>This creates a new kind of medical purgatory. People are using powerful metabolic drugs to change themselves, often with real benefit, but also with uncertain guidance. Medical professionals generally do not view prescription medication as a simple consumer choice. They work within systems built around indication, regulation, risk management, monitoring, and need. Many users, by contrast, experience these drugs as tools of self-directed improvement - more like fixing a lawn mower or installing a modem after watching a YouTube tutorial, part of a broader do-it-yourself culture now reaching into medicine. The result is a culture clash: medicine wants these drugs to move through a slow, cautious, regulated process; consumers often want access, autonomy, information, and practical advice now.</p>
+      <p>The range is visible inside the archive itself. One user sounds like the high-information medical consumer these drugs have helped create, reading official submissions and physician guidance before deciding how to proceed: <q class="home-story-quote">I definitely did not follow the direct rules. I did read the FDA studies (yes the 300+ page new drug submission as well) and all other physician oriented guidance I could find.</q> <span class="home-story-source">High-information self-navigation, r/Mounjaro · <a href="https://www.reddit.com/r/Mounjaro/comments/1inx4vv/18_month_update_with_photos_and_details/" target="_blank" rel="noopener">source</a></span>.</p>
+
+      <p>Another sounds less like an experimenter than a person reaching out in a bad moment: maybe for help, maybe to vent, maybe simply to be heard by people who understand the strange psychological terrain of appetite suddenly changing. <q class="home-story-quote home-story-quote-vulnerable">I&rsquo;ve upped my dose and I&rsquo;m spiraling but I don&rsquo;t want to quit but I do wonder if it&rsquo;s because I have nothing else to focus on now that I&rsquo;m not constantly eating.</q> <span class="home-story-source">Reaching out under strain, r/Semaglutide · <a href="https://www.reddit.com/r/Semaglutide/comments/1kela59/depressioncycling_dose/mqp6pk5/" target="_blank" rel="noopener">source</a></span>.</p>
+
+      <p>The enormous success of GLP-1 drugs creates a new kind of medical purgatory. People are using powerful metabolic drugs to change themselves, often with real benefit, but also with uncertain guidance. Medical professionals generally do not view prescription medication as a simple consumer choice. They work within systems built around indication, regulation, risk management, monitoring, and need. Many users, by contrast, experience these drugs as tools of self-directed improvement, but as they access them outside the traditional medical establishment they are forced to help themselves, in a way that at times is more like fixing a lawn mower or installing a modem after watching a YouTube tutorial than like accessing medical care. Perhaps this is a broader do-it-yourself culture now reaching into medicine. The result is a culture clash: medicine wants these drugs to move through a slow, cautious, regulated process; consumers often want access, autonomy, information, and practical advice now.</p>
 
       {snapshot("reta", 3, "right")}
 
@@ -1150,6 +1203,16 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
 
       <p>This website is a first attempt to map that change from the ground up: through the stories people tell while trying to navigate one of the most consequential medical consumer movements of the decade.</p>
 
+      <p>The <a href="weight-change/">weight-change pages</a> begin with the most familiar question - how much weight did people say they lost, and over what period? - but the plot is only the entry point. Click a point and the chart opens back into the Reddit account behind it: the dose narrative, the timing, the confidence note, and the original text where someone describes trying to make sense of a powerful intervention in ordinary life.</p>
+
+      <p>The <a href="side-effects/">side-effects pages</a> start from symptoms rather than pounds. They let readers move from common phrases such as nausea, constipation, fatigue, vomiting, or appetite loss into the posts where those words appear. The goal is not to turn Reddit into an adverse-event table, but to show how people describe discomfort, alarm, adaptation, reassurance, and the search for help when the boundary between treatment and self-management becomes thin.</p>
+
+      <p>The <a href="concurrent/">stacking and polypharmacy page</a> follows the combinations: GLP-1 drugs layered with other GLP-1s, amylin drugs, hormones, stimulants, peptides, supplements, and symptom-management medications. Use the network to click a compound or a connection between compounds, then read the reports that produced it. This is where the culture of self-directed medicine is often most visible: people comparing protocols, improvising risk, and trying to navigate combinations that may sit outside ordinary clinical supervision.</p>
+
+      <p>The <a href="methods/">methods page</a> explains how the site reads Reddit and what it refuses to claim. It describes the crawler, one-post-at-a-time extraction, unit conversion, rescreening, and the obvious biases: enthusiastic posters, distressed posters, sellers, bots, trolls, missing quiet users, and platform blind spots. It is the best place to understand why the site treats these data as contextualized stories rather than estimates of true drug effects.</p>
+
+      <p>The <a href="data-status/">data status page</a> is a progress report on the archive itself. It shows how many posts have been parsed, how many reports are currently plottable, and where the extraction remains thin. It helps readers distinguish a strong-looking pattern from a sparse one, and reminds them that the site is still an evolving map of public testimony rather than a finished medical database.</p>
+
       <p>This is still a work in progress. The extraction is imperfect. The communities are not representative. The data should be interpreted cautiously. But the phenomenon itself is too important to ignore. GLP-1 drugs are changing obesity treatment, diabetes care, pharmaceutical markets, online medicine, and the relationship between patients, consumers, physicians, and platforms.</p>
 
       <footer class="home-footnotes" aria-label="Site caveats and shortcuts">
@@ -1160,7 +1223,7 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
   </main>
 </body>
 """
-    return html_page("GLP-1 Reddit Reports", body)
+    return html_page(SOCIAL_TITLE, body)
 
 
 def render_weight_choice_page(summary: dict[str, Any], generated_at: str) -> str:
@@ -1194,7 +1257,7 @@ def render_weight_choice_page(summary: dict[str, Any], generated_at: str) -> str
   </main>
 </body>
 """
-    return html_page("Weight Change Choices", body, asset_prefix="../")
+    return html_page("Weight Change", body, asset_prefix="../", page_path="weight-change/")
 
 
 def render_side_effect_choice_page(summary: dict[str, Any], generated_at: str) -> str:
@@ -1226,7 +1289,7 @@ def render_side_effect_choice_page(summary: dict[str, Any], generated_at: str) -
   </main>
 </body>
 """
-    return html_page("Side Effect Choices", body, asset_prefix="../")
+    return html_page("Side Effects", body, asset_prefix="../", page_path="side-effects/")
 
 
 def render_methods_page(generated_at: str) -> str:
@@ -1236,20 +1299,26 @@ def render_methods_page(generated_at: str) -> str:
   <main class="page">
     <section class="page-heading">
       <p class="eyebrow">Methods</p>
-      <h1>How the site is built.</h1>
-      <p>This project stores raw Reddit candidate posts and comments, parses one item per LLM call, validates strict JSON, converts units in code, and rescreens reports with large losses, notable gains, or long durations. The LLM extracts raw values only; plotting and unit conversion are computational.</p>
+      <h1>How GLP-1 Chatter reads Reddit.</h1>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
-    <section class="method-grid">
-      <article class="section-panel"><h2>Crawling</h2><p>Relevant Reddit sources are crawled slowly and politely. Raw candidate text, URLs, matched terms, timestamps, and source metadata are retained in SQLite.</p></article>
-      <article class="section-panel"><h2>Extraction</h2><p>Each post or comment is parsed independently with a structured JSON schema. Previously processed post IDs are not reparsed just because text or hash metadata changes.</p></article>
-      <article class="section-panel"><h2>Rescreening</h2><p>Large extracted values are reviewed by a stronger model, including weight loss over 25 kg, weight gain over 5 kg, or duration over 365 days.</p></article>
-      <article class="section-panel"><h2>Plotting</h2><p>Weight loss is plotted as negative weight change in kilograms. Reddit fitted curves are computed from Reddit reports only and do not use optional RCT overlays.</p></article>
+    <section class="page-copy methods-essay">
+      <p>GLP-1 Chatter is not a clinical trial, a pharmacovigilance system, or medical advice. It is a public reading machine for a messy online archive. The goal is not to estimate the true average weight loss on semaglutide, tirzepatide, or retatrutide, and not to tabulate side effects as if Reddit were a registry. The goal is to surface quantitative individual stories: people self-navigating powerful medical interventions, often with limited guidance, uneven access to clinicians, and very different levels of medical supervision.</p>
+      <p>That distinction matters. A number on this site is meant to stay attached to a person&apos;s account of what happened. A dot on a chart should lead back to the post that produced it. A side-effect count should be read with the original language nearby. The site tries to quantify without stripping away context, because the context is often the point: people are describing fear, experimentation, relief, confusion, dose changes, plateaus, side effects, and improvised care in public.</p>
+      <p>The source material is found by a slow Reddit crawler. It searches selected communities for drug names, brand names, and common shorthand: retatrutide, reta, and retaglutide; tirzepatide, tirz, Mounjaro, and Zepbound; semaglutide, sema, Ozempic, Wegovy, and Rybelsus. When a candidate post or comment is found, the database keeps the subreddit, date, title, body, matched terms, URL, and original full text.</p>
+      <p>Each post or comment is then read one at a time. The language model is not asked to summarize a batch or infer a population trend. It receives a single Reddit item and returns structured fields: the drug family, the drug name mentioned, dose narrative, duration, starting and current weight, reported loss, side effects, attribution, confidence, and a short evidence note. The system marks processed post IDs so routine changes in database metadata do not trigger unnecessary rereading.</p>
+      <p>The extraction prompt is deliberately suspicious. Reddit shorthand can be treacherous: SW means starting weight, CW means current weight, and GW usually means goal weight, not weight lost. A milligram dose is not body weight. Age is not duration. A pregnancy high weight, a prior Ozempic run, a switch from semaglutide to retatrutide, or a whole lifetime GLP-1 journey should not be credited to the focal drug unless the post clearly says so.</p>
+      <p>The model extracts raw values and units; code does the arithmetic. Pounds and stone are converted to kilograms, durations are converted to days and weeks, and missing values are filled in only when the relationship is clear. Goal weight is never treated as current weight. Weight loss is plotted as negative weight change, so losing 10 kg appears as -10 kg. The display caps visible weight gain at +10 kg so a likely misread or exceptional outlier does not stretch the whole chart.</p>
+      <p>Some records get a second read. Reports with weight loss over 25 kg, weight gain over 5 kg, or duration over 365 days are sent through a stronger rescreening step before they become canonical. Side effects are extracted as short phrases, normalized with an explicit mapping, and screened into mild, moderate, or severe reader-facing labels. Those labels are not clinical adverse-event grades; they are a browsing aid for lived reports.</p>
+      <p>The language model can still be wrong. It can miss jokes, sarcasm, bravado, deleted context, or a throwaway line that changes the meaning of a post. Long Reddit narratives are especially difficult when they describe several drugs, several starts and stops, pregnancy weight, regained weight, a prior GLP-1 history, a switch, a stack, and more than one bout of loss or gain. The model may infer a duration that was never stated, attach an old weight change to the wrong drug, mistake a goal or highest weight for a current weight, or treat a frightened question as a clean report. This is why the widgets are built to point back to the original Reddit text: the extraction is an index into the story, not a substitute for reading it.</p>
+      <p>The biases are obvious and large. Reddit users are not representative of all patients. Enthusiastic people may be more likely to post. People having frightening symptoms may also be more likely to post. People doing well under ordinary medical care may never appear. People without internet access, English fluency, leisure time, or comfort discussing weight and medication in public are underrepresented. Some posts may be exaggerated, mistaken, duplicated, sarcastic, or incomplete.</p>
+      <p>There are also platform and market distortions. These communities attract curiosity, desperation, brand loyalty, anti-brand resentment, peptide vendors, gray-market sales pitches, bots, trolls, and people with financial or ideological reasons to make a drug look better or worse than it is. Moderation policies differ by subreddit. Search terms miss some relevant reports and capture some irrelevant ones. Deleted posts, edited posts, Reddit access limits, and crawler blind spots all shape what enters the archive.</p>
+      <p>For those reasons, the charts should be read as maps of reported experience, not estimates of treatment effect. Optional clinical-trial overlays, when present, are external aggregate comparison data and are never used to fit the Reddit curve. GLP-1 Chatter is most useful when a reader moves between the aggregate view and the underlying stories: from dot to post, from side-effect phrase to full account, from apparent pattern back to the messy social world that produced it.</p>
     </section>
   </main>
 </body>
 """
-    return html_page("Methods", body, asset_prefix="../")
+    return html_page("Methods", body, asset_prefix="../", page_path="methods/")
 
 
 def render_data_status_page(summary: dict[str, Any], generated_at: str) -> str:
@@ -1286,7 +1355,7 @@ def render_data_status_page(summary: dict[str, Any], generated_at: str) -> str:
   </main>
 </body>
 """
-    return html_page("Data Status", body, asset_prefix="../")
+    return html_page("Data Status", body, asset_prefix="../", page_path="data-status/")
 
 
 def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
@@ -1307,17 +1376,22 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
             "Reddit fitted curve."
         )
     )
-    page_copy = "\n".join(
+    intro_copy = "\n".join(
+        f"        <p>{html.escape(paragraph)}</p>"
+        for paragraph in WEIGHT_PAGE_COPY[family]
+    )
+    after_plot_copy = "\n".join(
         f"        <p>{html.escape(paragraph)}</p>"
         for paragraph in [
-            *WEIGHT_PAGE_COPY[family],
             (
-                "The dots below are the site's best current reading of Reddit reports with at "
-                "least 21 days of duration. Weight loss is plotted as negative weight change in "
-                "kilograms, so a 10 kg loss appears as -10 kg. Hover or click a point to see the "
-                "original text, Reddit URL, extracted fields, confidence, evidence, and notes. "
-                "Large losses, gains over 5 kg, and very long durations are sent through "
-                "gpt-5.4-mini for a second read before the canonical extraction is shown."
+                "The dots are the site's best current reading of Reddit reports with at least "
+                "21 days of duration. Weight loss is plotted as negative weight change in "
+                "kilograms, so a 10 kg loss appears as -10 kg. Hover or click a point to see "
+                "the original text, Reddit URL, extracted fields, confidence, evidence, and "
+                "notes. To keep obvious high-gain outliers from stretching the figure, the "
+                "displayed plot is capped at +10 kg of weight gain. Large losses, gains over "
+                "5 kg, and very long durations are sent through gpt-5.4-mini for a second read "
+                "before the canonical extraction is shown."
             ),
             rct_context,
         ]
@@ -1331,9 +1405,8 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Weight change over time</h1>
       <div class="page-copy">
-{page_copy}
+{intro_copy}
       </div>
-      {rct_note}
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
     <section class="plot-layout">
@@ -1346,11 +1419,15 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
         <p>Select a point to inspect the original Reddit text and extracted fields.</p>
       </aside>
     </section>
+    <section class="page-copy plot-afterword">
+{after_plot_copy}
+      {rct_note}
+    </section>
   </main>
   <script src="../assets/app.js"></script>
 </body>
 """
-    return html_page(f"{name} Reddit Reports", body, asset_prefix="../")
+    return html_page(f"{name} Weight Change", body, asset_prefix="../", page_path=f"{family}/")
 
 
 def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, Any]) -> str:
@@ -1363,12 +1440,12 @@ def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, 
     <section class="page-heading">
       {family_tabs(family, current_view="effects")}
       <p class="eyebrow">{html.escape(name)}</p>
-      <h1>Side-effect mentions</h1>
+      <h1>Side-effects</h1>
       <div class="page-copy side-effect-page-copy">
 {examples_html}
-        <p>The side-effect view starts with the same single-item reading process as the weight plots. Each Reddit post or comment gets a first pass from gpt-5.4-nano, with flagged records eligible for a gpt-5.4-mini reread, and the extraction pulls concise side-effect phrases from the user's account. A separate one-report LLM screen then labels each extracted phrase as mild, moderate, or severe. Code normalizes obvious variants, so "sulfur burps" and "sulphur burps" can be counted together while the original Reddit text remains one click away.</p>
-        <p>The labels are not clinical adverse-event grades. They are reader-facing triage for a noisy archive: mild when the report sounds limited or manageable, moderate when it becomes disruptive or persistent, and severe when the text points to danger, drug stopping, urgent care, inability to keep food or fluids down, or major impairment. "Unscreened" means the report has not yet received that severity pass.</p>
-        <p>Use the frequency list to select a specific side effect, the circular co-occurrence view to select pairs of symptoms that appear in the same report, and the severity buttons to narrow the archive to mild, moderate, or severe accounts. The report cards below then let you browse the source posts and full Reddit text, preserving the lived context people chose to share: excitement, fear, reassurance, practical advice, and sometimes vulnerability in a place that may or may not give them reliable support.</p>
+        <p>These medications are certainly not without side effects. As with the weight-loss plots, GLP-1 Chatter starts by selecting Reddit posts and comments that mention the relevant drug family, then reads them one by one to pull out the symptoms people say they experienced. A second one-report screen gives each extracted phrase a reader-facing severity label: mild, moderate, or severe. The point is not to diagnose anyone. It is to make a sprawling archive easier to navigate without separating the count from the story that produced it.</p>
+        <p>The labels are not clinical adverse-event grades. They are a way of reading a noisy public archive: mild when the report sounds limited or manageable, moderate when it becomes disruptive or persistent, and severe when the text points to danger, drug stopping, urgent care, inability to keep food or fluids down, or major impairment. "Unscreened" means the report has not yet received that severity pass.</p>
+        <p>Use the frequency list to choose a specific side effect, the co-occurrence view to see symptoms that travel together, and the severity buttons to narrow the archive to mild, moderate, or severe accounts. The report cards below then let you browse the source posts and full Reddit text, preserving the lived context people chose to share: excitement, fear, reassurance, practical advice, and sometimes vulnerability in a place that may or may not give them reliable support.</p>
       </div>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
@@ -1410,10 +1487,12 @@ def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, 
   <script src="../assets/app.js"></script>
 </body>
 """
-    return html_page(f"{name} Side Effects", body, asset_prefix="../")
+    return html_page(f"{name} Side Effects", body, asset_prefix="../", page_path=f"{family}/side-effects.html")
 
 
-def render_concurrent_page(generated_at: str) -> str:
+def render_concurrent_page(generated_at: str, summary: dict[str, Any]) -> str:
+    report_count = int(summary.get("reports") or 0)
+    stack_report_count = int(summary.get("stack_reports") or 0)
     body = f"""
 <body data-view="concurrent" data-json="../data/concurrent.json">
   {site_header("../", active="stacking")}
@@ -1421,7 +1500,24 @@ def render_concurrent_page(generated_at: str) -> str:
     <section class="page-heading">
       <p class="eyebrow">All drug families</p>
       <h1>Stacking/polypharmacy</h1>
-      <p>Circular network of normalized compounds mentioned together in parsed Reddit reports. Edges connect compounds appearing in the same extracted report; stack-only mode restricts counts to reports marked as stacks by the parser.</p>
+      <div class="page-copy stacking-copy">
+        <p>Stacking is the deliberate use of more than one drug or compound at the same time: for example, retatrutide plus tirzepatide, or a GLP-1 drug layered with cagrilintide, growth-hormone peptides, testosterone, stimulants, supplements, or symptom-management medicines. Polypharmacy is the broader version of the same problem: a person may not be "stacking" intentionally, but their Reddit report still describes multiple active compounds interacting in the same body.</p>
+        <div class="stacking-quotes" aria-label="Stacking examples from Reddit">
+          <figure class="testimonial stacking-example">
+            <figcaption>r/Retatrutide - self-described stack</figcaption>
+            <blockquote>I'm on a really similar stack to you: Reta 2mg 2x per week ... Carnitine IM ... HGH ... GHKcu ... Methylene Blue ... LSD microdose, but that's a whole other thing.</blockquote>
+            <a class="reddit-link" href="https://www.reddit.com/r/Retatrutide/comments/1kl3kb7/anyone_lean_but_on_ret/ms1sn5l/" target="_blank" rel="noopener">Open Reddit URL</a>
+          </figure>
+          <figure class="testimonial stacking-example">
+            <figcaption>r/Retatrutide - Reta/Tirz protocol</figcaption>
+            <blockquote>A few days ago I took 7.5mg Tirz ... 4mg of Reta. This seems to be the sweet spot for me. High hunger suppression.</blockquote>
+            <a class="reddit-link" href="https://www.reddit.com/r/Retatrutide/comments/17puvuc/my_research_protocol/" target="_blank" rel="noopener">Open Reddit URL</a>
+          </figure>
+        </div>
+        <p>In this archive the conversation is most visible in r/Retatrutide, with additional reports from r/Semaglutide, r/Mounjaro, and r/MounjaroMaintenance. It is a higher-risk corner of the GLP-1 world. Some users are taking approved medications. Others describe research peptides, gray-market supply chains, hormone manipulation, bodybuilding drugs, or compounds that are investigational or only recently moving through late-stage trials. The point of this view is not to endorse those combinations. It is to make the combinations legible.</p>
+        <p>The current network contains {report_count} reports with concurrent compounds, including {stack_report_count} reports the parser marked as stack-attribution cases. Use the buttons below to switch between all concurrent mentions and the stricter stack-only view. Click a compound on the outer ring, or click a connecting line between two compounds, and the panel on the right will show the contributing Reddit reports, the raw compound language, normalized compound names, excerpts, and links back to the source posts. The widget is meant to help readers move from a pattern in the network to the lived experience behind it.</p>
+        <p>In the widget below, click a compound name or a connection between two compounds to uncover specific Reddit user reports about the combined use of two, or many more, drugs at the same time.</p>
+      </div>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
     <section class="network-controls" aria-label="Network controls">
@@ -1447,7 +1543,7 @@ def render_concurrent_page(generated_at: str) -> str:
   <script src="../assets/app.js"></script>
 </body>
 """
-    return html_page("Stacking/polypharmacy", body, asset_prefix="../")
+    return html_page("Stacking/polypharmacy", body, asset_prefix="../", page_path="concurrent/")
 
 
 def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
@@ -1518,7 +1614,10 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
         )
     concurrent_dir = site_dir / "concurrent"
     concurrent_dir.mkdir(parents=True, exist_ok=True)
-    (concurrent_dir / "index.html").write_text(render_concurrent_page(generated_at), encoding="utf-8")
+    (concurrent_dir / "index.html").write_text(
+        render_concurrent_page(generated_at, concurrent_payload["summary"]),
+        encoding="utf-8",
+    )
     weight_dir = site_dir / "weight-change"
     weight_dir.mkdir(parents=True, exist_ok=True)
     (weight_dir / "index.html").write_text(render_weight_choice_page(summary, generated_at), encoding="utf-8")
