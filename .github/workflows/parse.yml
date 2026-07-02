@@ -21,6 +21,11 @@ on:
         required: false
         default: "false"
         type: boolean
+      queue_rescreen_flags:
+        description: "Queue already-parsed reports that meet current rescreen thresholds"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
   contents: write
@@ -63,6 +68,9 @@ jobs:
           echo "Parse limit: $parse_limit"
           if [ "${{ github.event.inputs.retry_errors || 'false' }}" = "true" ]; then
             args+=(--retry-errors)
+          fi
+          if [ "${{ github.event.inputs.queue_rescreen_flags || 'false' }}" = "true" ]; then
+            args+=(--queue-rescreen-flags)
           fi
           python scripts/parse_reports.py "${args[@]}"
       - name: Commit parsed database

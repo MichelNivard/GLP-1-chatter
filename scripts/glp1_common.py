@@ -504,11 +504,20 @@ def compute_converted_report(report: dict[str, Any]) -> dict[str, Any]:
     return converted
 
 
+RESCREEN_WEIGHT_LOSS_KG = 25.0
+RESCREEN_WEIGHT_GAIN_KG = 5.0
+RESCREEN_DURATION_DAYS = 365.0
+
+
 def report_needs_rescreen(converted: dict[str, Any]) -> bool:
     lost_kg = converted.get("weight_lost_kg")
+    weight_change_kg = converted.get("weight_change_kg")
     duration_days = converted.get("duration_days")
-    return (lost_kg is not None and lost_kg > 25.0) or (
-        duration_days is not None and duration_days > 365.0
+    gain_kg = weight_change_kg if weight_change_kg is not None else (-lost_kg if lost_kg is not None else None)
+    return (
+        (lost_kg is not None and lost_kg > RESCREEN_WEIGHT_LOSS_KG)
+        or (gain_kg is not None and gain_kg > RESCREEN_WEIGHT_GAIN_KG)
+        or (duration_days is not None and duration_days > RESCREEN_DURATION_DAYS)
     )
 
 

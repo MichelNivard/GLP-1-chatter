@@ -34,8 +34,9 @@ DEFAULT_MODEL = "gpt-5.4-nano"
 DEFAULT_RESCREEN_MODEL = "gpt-5.4-mini"
 
 RESCREEN_WARNING = (
-    "This was flagged because the extracted weight loss or duration is large. "
-    "Carefully check whether the loss/duration is truly attributable to the focal drug, "
+    "This was flagged because the extracted weight loss or duration is large, "
+    "or because the extracted report shows notable weight gain. "
+    "Carefully check whether the loss/gain/duration is truly attributable to the focal drug, "
     "or whether it belongs to prior Tirz/Sema/Ozempic/Wegovy/Mounjaro/Zepbound history, "
     "total GLP journey, age, goal weight, dose, or another confound."
 )
@@ -182,6 +183,14 @@ def parse_args() -> argparse.Namespace:
         choices=("default", "in_memory", "24h"),
         default="24h",
         help="OpenAI prompt cache retention. Use 'default' to omit the parameter.",
+    )
+    parser.add_argument(
+        "--queue-rescreen-flags",
+        action="store_true",
+        help=(
+            "Before parsing, mark already-parsed nano-only rows whose canonical reports meet "
+            "the current rescreen thresholds as pending for one mini-model rescreen."
+        ),
     )
     return parser.parse_args()
 
@@ -353,6 +362,52 @@ def select_rows(conn: sqlite3.Connection, limit: int, retry_errors: bool) -> lis
     else:
         params = [*statuses]
     return list(conn.execute(query, params).fetchall())
+
+
+def queue_rescreen_flags(conn: sqlite3.Connection, dry_run: bool) -> int:
+    rows = conn.execute(
+        """
+        SELECT DISTINCT p.post_id
+        FROM raw_posts p
+        JOIN extracted_reports r ON r.post_id = p.post_id
+        WHERE p.parse_status = 'parsed'
+          AND p.rescreen_status = 'not_needed'
+          AND r.canonical = 1
+          AND r.source_pass = 'nano'
+        ORDER BY p.post_id
+        """
+    ).fetchall()
+    flagged_post_ids: list[int] = []
+    for row in rows:
+        reports = conn.execute(
+            """
+            SELECT weight_lost_kg, duration_days, weight_change_kg
+            FROM extracted_reports
+            WHERE post_id = ?
+              AND canonical = 1
+              AND source_pass = 'nano'
+            """,
+            (row["post_id"],),
+        ).fetchall()
+        if any(report_needs_rescreen(dict(report)) for report in reports):
+            flagged_post_ids.append(int(row["post_id"]))
+
+    if flagged_post_ids and not dry_run:
+        conn.executemany(
+            "UPDATE raw_posts SET rescreen_status = 'pending' WHERE post_id = ?",
+            [(post_id,) for post_id in flagged_post_ids],
+        )
+        conn.commit()
+    print(
+        json.dumps(
+            {
+                "queue_rescreen_flags": len(flagged_post_ids),
+                "dry_run": dry_run,
+            },
+            sort_keys=True,
+        )
+    )
+    return len(flagged_post_ids)
 
 
 def cached_result(
@@ -613,6 +668,8 @@ def main() -> int:
     args = parse_args()
     conn = connect_db(args.db)
     ensure_schema(conn)
+    if args.queue_rescreen_flags:
+        queue_rescreen_flags(conn, args.dry_run)
     rows = select_rows(conn, args.limit, args.retry_errors)
     if not rows:
         print("no pending rows")

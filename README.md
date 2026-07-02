@@ -105,9 +105,16 @@ Use `--retry-errors` only when you intentionally want to retry rows previously m
 After computational unit conversion, a report is rescreened with `gpt-5.4-mini` if:
 
 - extracted weight loss is greater than 25 kg, or
+- extracted weight gain is greater than 5 kg, or
 - extracted duration is greater than 365 days.
 
-The rescreen prompt includes an explicit warning to check whether the large loss/duration is really attributable to the focal drug rather than prior GLP history, total journey, age, goal weight, dose, or another confound. Each processed content hash gets at most one nano pass and one mini rescreen pass unless you explicitly retry errors.
+The rescreen prompt includes an explicit warning to check whether the large loss/gain/duration is really attributable to the focal drug rather than prior GLP history, total journey, age, goal weight, dose, or another confound. Each processed content hash gets at most one nano pass and one mini rescreen pass unless you explicitly retry errors.
+
+To apply a new rescreen boundary to already-parsed nano results, dispatch the parse workflow with `queue_rescreen_flags=true` and `limit=0`, or run:
+
+```bash
+python scripts/parse_reports.py --queue-rescreen-flags --limit 0
+```
 
 ## Site Build
 
