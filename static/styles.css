@@ -305,6 +305,7 @@ p {
 }
 
 .mini-chart {
+  display: block;
   height: 150px;
   margin: 1rem;
   border: 1px solid var(--line);
@@ -315,27 +316,69 @@ p {
     linear-gradient(to bottom, #f0f5f2 1px, transparent 1px),
     #fffefa;
   background-size: auto, 34px 34px, 34px 34px, auto;
-  position: relative;
+  width: calc(100% - 2rem);
 }
 
-.mini-chart::after {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 8%;
-  bottom: 32%;
-  height: 54px;
-  border-bottom: 4px solid var(--green);
-  border-radius: 0 0 60% 40%;
-  transform: rotate(-7deg);
+.mini-chart-empty {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.9rem;
+  justify-content: center;
+  padding: 1rem;
 }
 
-.family-tirz .mini-chart::after {
-  border-bottom-color: var(--blue);
+.mini-axis {
+  stroke: #c8c3b5;
+  stroke-width: 1;
 }
 
-.family-sema .mini-chart::after {
-  border-bottom-color: var(--orange);
+.mini-zero {
+  stroke: #a7aaa3;
+  stroke-dasharray: 4 4;
+  stroke-width: 1.1;
+}
+
+.mini-fit {
+  fill: none;
+  stroke: var(--green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.mini-point {
+  fill: var(--green);
+  opacity: 0.72;
+  stroke: #ffffff;
+  stroke-width: 1;
+}
+
+.family-tirz .mini-fit,
+.family-tirz .mini-point {
+  stroke: var(--blue);
+}
+
+.family-tirz .mini-point {
+  fill: var(--blue);
+  stroke: #ffffff;
+}
+
+.family-sema .mini-fit,
+.family-sema .mini-point {
+  stroke: var(--orange);
+}
+
+.family-sema .mini-point {
+  fill: var(--orange);
+  stroke: #ffffff;
+}
+
+.mini-label {
+  fill: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .actions,

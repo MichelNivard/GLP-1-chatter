@@ -120,6 +120,100 @@ def family_tabs(current_family: str, *, current_view: str) -> str:
     return f'<div class="tabs" aria-label="Drug family pages">{"".join(tabs)}</div>'
 
 
+def _plot_scale(value: float, domain_min: float, domain_max: float, range_min: float, range_max: float) -> float:
+    if domain_min == domain_max:
+        return (range_min + range_max) / 2
+    return range_min + (value - domain_min) / (domain_max - domain_min) * (range_max - range_min)
+
+
+def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
+    points = [
+        point
+        for point in payload.get("points", [])
+        if point.get("duration_weeks") is not None
+        and point.get("weight_change_kg") is not None
+        and math.isfinite(float(point["duration_weeks"]))
+        and math.isfinite(float(point["weight_change_kg"]))
+    ]
+    curve = [
+        point
+        for point in payload.get("curve", [])
+        if point.get("weeks") is not None
+        and point.get("weight_change_kg") is not None
+        and math.isfinite(float(point["weeks"]))
+        and math.isfinite(float(point["weight_change_kg"]))
+    ]
+    name = FAMILY_NAMES[family]
+    if not points:
+        return f"""
+        <div class="mini-chart mini-chart-empty" role="img" aria-label="{html.escape(name)} mini plot">
+          <span>No plottable reports yet</span>
+        </div>
+"""
+
+    width = 300
+    height = 150
+    left = 28
+    right = 12
+    top = 14
+    bottom = 26
+    x_values = [float(point["duration_weeks"]) for point in points]
+    y_values = [float(point["weight_change_kg"]) for point in points]
+    x_values.extend(float(point["weeks"]) for point in curve)
+    y_values.extend(float(point["weight_change_kg"]) for point in curve)
+    y_values.append(0.0)
+    x_min = min(x_values)
+    x_max = max(x_values)
+    y_min = min(y_values)
+    y_max = max(y_values)
+    x_span = x_max - x_min
+    y_span = y_max - y_min
+    if x_span == 0:
+        x_min -= 1
+        x_max += 1
+    else:
+        x_min = max(0.0, x_min - x_span * 0.06)
+        x_max += x_span * 0.06
+    if y_span == 0:
+        y_min -= 1
+        y_max += 1
+    else:
+        y_min -= y_span * 0.12
+        y_max += y_span * 0.12
+
+    def x_pos(value: float) -> float:
+        return _plot_scale(value, x_min, x_max, left, width - right)
+
+    def y_pos(value: float) -> float:
+        return _plot_scale(value, y_min, y_max, height - bottom, top)
+
+    zero_y = y_pos(0.0)
+    point_nodes = "\n".join(
+        f'<circle class="mini-point" cx="{x_pos(float(point["duration_weeks"])):.2f}" '
+        f'cy="{y_pos(float(point["weight_change_kg"])):.2f}" r="2.4" />'
+        for point in points
+    )
+    curve_path = ""
+    if len(curve) >= 2:
+        path = " ".join(
+            f'{"M" if index == 0 else "L"}{x_pos(float(point["weeks"])):.2f},{y_pos(float(point["weight_change_kg"])):.2f}'
+            for index, point in enumerate(curve)
+        )
+        curve_path = f'<path class="mini-fit" d="{path}" />'
+    return f"""
+        <svg class="mini-chart mini-plot" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(name)} weight-change mini plot">
+          <title>{html.escape(name)} Reddit reports: duration by weight change</title>
+          <line class="mini-axis" x1="{left}" y1="{height - bottom}" x2="{width - right}" y2="{height - bottom}" />
+          <line class="mini-axis" x1="{left}" y1="{top}" x2="{left}" y2="{height - bottom}" />
+          <line class="mini-zero" x1="{left}" y1="{zero_y:.2f}" x2="{width - right}" y2="{zero_y:.2f}" />
+          {curve_path}
+          {point_nodes}
+          <text class="mini-label" x="{left}" y="{height - 7}">Duration</text>
+          <text class="mini-label" x="{left}" y="10">Weight change</text>
+        </svg>
+"""
+
+
 def median(values: list[float]) -> float | None:
     cleaned = [value for value in values if value is not None and math.isfinite(value)]
     if not cleaned:
@@ -814,7 +908,7 @@ def html_page(title: str, body: str, asset_prefix: str = "") -> str:
 """
 
 
-def render_home(summary: dict[str, Any], generated_at: str) -> str:
+def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dict[str, dict[str, Any]]) -> str:
     cards = []
     effects_cards = []
     for family in DRUG_FAMILIES:
@@ -833,7 +927,7 @@ def render_home(summary: dict[str, Any], generated_at: str) -> str:
           <div class="metric"><span>Median weeks</span><strong>{fmt_number(item["median_duration_weeks"])}</strong></div>
           <div class="metric"><span>Median change</span><strong>{fmt_number(item["median_weight_change_kg"])} kg</strong></div>
         </div>
-        <div class="mini-chart" aria-hidden="true"></div>
+        {render_home_mini_plot(family, family_payloads[family])}
         {family_action_links(family)}
       </article>
 """
@@ -1123,7 +1217,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     concurrent_dir = site_dir / "concurrent"
     concurrent_dir.mkdir(parents=True, exist_ok=True)
     (concurrent_dir / "index.html").write_text(render_concurrent_page(generated_at), encoding="utf-8")
-    (site_dir / "index.html").write_text(render_home(summary, generated_at), encoding="utf-8")
+    (site_dir / "index.html").write_text(render_home(summary, generated_at, family_payloads), encoding="utf-8")
     return summary
 
 
