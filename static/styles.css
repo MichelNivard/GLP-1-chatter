@@ -161,6 +161,114 @@ p {
   max-width: 740px;
 }
 
+.home-essay {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.essay-header {
+  max-width: 940px;
+  margin-bottom: 1.35rem;
+}
+
+.essay-deck {
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 760;
+  line-height: 1.35;
+  margin-bottom: 0;
+}
+
+.home-essay > p {
+  color: var(--ink);
+  font-size: 1.08rem;
+  line-height: 1.78;
+  max-width: 780px;
+}
+
+.home-essay .essay-lede {
+  color: var(--muted);
+  font-size: 1.16rem;
+  line-height: 1.7;
+  max-width: 860px;
+}
+
+.story-snapshot {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  margin: 0.35rem 0 1.2rem;
+  max-width: 390px;
+  overflow: hidden;
+}
+
+.story-snapshot-right {
+  float: right;
+  margin-left: 1.35rem;
+}
+
+.story-snapshot-left {
+  float: left;
+  margin-right: 1.35rem;
+}
+
+.story-snapshot h2 {
+  font-size: 1.45rem;
+  margin: 0;
+  padding: 0 1rem 0.35rem;
+}
+
+.story-snapshot .aliases,
+.snapshot-note {
+  padding: 0 1rem;
+}
+
+.story-snapshot .aliases {
+  font-size: 0.94rem;
+  margin-bottom: 0.65rem;
+}
+
+.snapshot-kicker {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  padding: 1rem 1rem 0.35rem;
+  text-transform: uppercase;
+}
+
+.snapshot-note {
+  color: var(--ink);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+
+.story-snapshot .mini-chart {
+  height: 132px;
+  margin-top: 0.8rem;
+}
+
+.compact-metrics .metric {
+  padding: 0.8rem;
+}
+
+.compact-metrics .metric strong {
+  font-size: 1.12rem;
+}
+
+.home-footnotes {
+  border-top: 1px solid var(--line);
+  clear: both;
+  margin-top: 2rem;
+  padding-top: 1.15rem;
+}
+
+.home-footnotes p {
+  max-width: 820px;
+}
+
 .route-panel,
 .section-panel,
 .drug,
@@ -1521,6 +1629,19 @@ th {
   .detail-panel {
     position: static;
     max-height: none;
+  }
+
+  .home-essay > p,
+  .home-essay .essay-lede {
+    max-width: none;
+  }
+
+  .story-snapshot,
+  .story-snapshot-left,
+  .story-snapshot-right {
+    float: none;
+    margin: 1.1rem 0 1.25rem;
+    max-width: none;
   }
 }
 

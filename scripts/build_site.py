@@ -909,46 +909,83 @@ def html_page(title: str, body: str, asset_prefix: str = "") -> str:
 
 
 def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dict[str, dict[str, Any]]) -> str:
-    cards = []
-    for family in DRUG_FAMILIES:
+    snapshot_notes = {
+        "sema": (
+            "Semaglutide, the GLP-1 drug that first made this new weight-loss era visible "
+            "at mass scale, with Wegovy entering the market in the early 2020s."
+        ),
+        "tirz": (
+            "Tirzepatide followed with dual GIP/GLP-1 activity and became the comparison point "
+            "for many users switching, escalating, or searching for stronger appetite effects."
+        ),
+        "reta": (
+            "Retatrutide is not approved as a weight-loss drug, but appears in high-risk-tolerance "
+            "communities unwilling to wait for formal approval and hoping for still larger losses "
+            "while retaining muscle."
+        ),
+    }
+
+    def snapshot(family: str, index: int, align: str) -> str:
         item = summary["families"][family]
-        cards.append(
-            f"""
-      <article class="drug family-{family}">
-        <div class="drug-head">
+        return f"""
+        <aside class="story-snapshot story-snapshot-{align} family-{family}" aria-label="{html.escape(FAMILY_NAMES[family])} snapshot">
+          <div class="snapshot-kicker">Snapshot {index}</div>
           <h2>{html.escape(FAMILY_NAMES[family])}</h2>
           <p class="aliases">{html.escape(FAMILY_COPY[family]["aliases"])}</p>
-        </div>
-        {render_home_mini_plot(family, family_payloads[family])}
-        <div class="metrics">
-          <div class="metric"><span>Parsed posts</span><strong>{item["parsed_posts"]}</strong></div>
-          <div class="metric"><span>Plottable</span><strong>{item["plottable_reports"]}</strong></div>
-          <div class="metric"><span>Median weeks</span><strong>{fmt_number(item["median_duration_weeks"])}</strong></div>
-          <div class="metric"><span>Median change</span><strong>{fmt_number(item["median_weight_change_kg"])} kg</strong></div>
-        </div>
-        {family_action_links(family)}
-      </article>
+          <p class="snapshot-note">{html.escape(snapshot_notes[family])}</p>
+          {render_home_mini_plot(family, family_payloads[family])}
+          <div class="metrics compact-metrics">
+            <div class="metric"><span>Parsed posts</span><strong>{item["parsed_posts"]}</strong></div>
+            <div class="metric"><span>Plottable</span><strong>{item["plottable_reports"]}</strong></div>
+            <div class="metric"><span>Median weeks</span><strong>{fmt_number(item["median_duration_weeks"])}</strong></div>
+            <div class="metric"><span>Median change</span><strong>{fmt_number(item["median_weight_change_kg"])} kg</strong></div>
+          </div>
+          {family_action_links(family)}
+        </aside>
 """
-        )
+
     body = f"""
 <body>
   {site_header(active="overview")}
   <main class="home">
-    <section class="hero">
-      <div>
+    <article class="home-essay">
+      <header class="essay-header">
         <p class="eyebrow">Drug Comparison Observatory</p>
-        <h1>GLP-1 Experiences</h1>
-        <p>This static site summarizes structured extractions from Reddit posts and comments mentioning Retatrutide, Tirzepatide, and Semaglutide. It is observational social-media text mining, not medical advice, clinical evidence, or proof of causality.</p>
-      </div>
-      <aside class="route-panel site-note" aria-label="How to use this site">
-        <h2>How to read it</h2>
-        <p>Start with one of the three drug cards. Each card links directly to that drug's weight-change plot or side-effect page, and every drug page lets you switch to the other drugs. The top navigation opens a choice page for Weight Change or Side Effects, and separate pages for Methods and Data Status.</p>
-        <p class="note-links"><a href="weight-change/">Choose a weight-change view</a><a href="side-effects/">Choose a side-effect view</a></p>
-      </aside>
-    </section>
-    <section id="compare" class="comparison" aria-label="Drug comparison">
-      {''.join(cards)}
-    </section>
+        <h1>GLP-1 Chatter</h1>
+        <p class="essay-deck">Reddit, weight-loss drugs, and the new medical consumerism.</p>
+      </header>
+
+      <p class="essay-lede">My interest in the rise of the new wave of highly effective weight-loss drugs, GLP-1-based medicines and related incretin drugs, is both scientific and personal. I first used a GLP-1 drug for weight loss in 2022, after reading promising trial evidence. It worked. The effect was immediate enough, and convincing enough, that I also bought shares in Novo Nordisk and Eli Lilly. My own experience was positive, and I still think these drugs are remarkable. For many people they are not merely another diet aid, but a profound intervention in appetite, weight, health, self-image, and agency.</p>
+
+      {snapshot("sema", 1, "right")}
+
+      <p>But their success has also exposed a much stranger and more difficult reality. A critical segment of medicine is being reorganized around motivated consumers, uneven access, online knowledge, and variable risk tolerance. Some people obtain these drugs through conventional medical care. Some go through brief online prescribing pathways. Some use compounding pharmacies. Others enter the much murkier world of research peptides, gray-market suppliers, and drugs that have not yet completed regulatory approval.</p>
+
+      {snapshot("tirz", 2, "left")}
+
+      <p>Reddit has become one of the places where this transition is visible in real time. On communities such as r/Semaglutide, r/Zepbound, r/Tirzepatide, and r/Peptides, people compare doses, side effects, weight-loss trajectories, plateaus, hunger, nausea, constipation, fatigue, hair loss, gallbladder worries, mood changes, and combinations with other medications. Some users are scientifically literate and deliberately experimental. Some are desperate, anxious, under-informed, or unable to access care through ordinary channels. Some posts are careful self-reports. Others may be contaminated by hype, misinformation, commercial interests, or outright peptide sales activity.</p>
+
+      <p>This creates a new kind of medical purgatory. People are using powerful metabolic drugs to change themselves, often with real benefit, but also with uncertain guidance. Medical professionals generally do not view prescription medication as a simple consumer choice. They work within systems built around indication, regulation, risk management, monitoring, and need. Many users, by contrast, experience these drugs as tools of self-directed improvement - more like fixing a lawn mower or installing a modem after watching a YouTube tutorial, part of a broader do-it-yourself culture now reaching into medicine. The result is a culture clash: medicine wants these drugs to move through a slow, cautious, regulated process; consumers often want access, autonomy, information, and practical advice now.</p>
+
+      {snapshot("reta", 3, "right")}
+
+      <p>GLP-1 Chatter tries to make that online landscape more legible.</p>
+
+      <p>The site uses large language models to extract structured information from Reddit discussions about GLP-1 and related weight-loss drugs. It indexes reported weight loss, side effects, co-occurring symptoms, medication combinations, dosing patterns, and user experiences across different communities. The aim is descriptive rather than prescriptive: to surface a broader sociological shift in how people relate to medicine. Across these discussions, individuals are not only receiving care but actively seeking, comparing, and directing it, often with a level of agency that feels new in scale and speed. This emerging pattern - of patients acting as informed, motivated consumers - appears to be unfolding faster than traditional medical institutions are accustomed to accommodating.</p>
+
+      <p>Reddit is messy, biased, incomplete, and vulnerable to manipulation. But it is also a vast archive of lived experience: a place where people describe what they are actually doing, what they think is happening to them, what they fear, what they tolerate, and what they recommend to others.</p>
+
+      <p>Importantly, the website is designed to keep the data close to the underlying stories. Interactive widgets allow users to move from aggregate summaries back toward the posts and experiences that generated them. A table of side effects should not float free from the people reporting them. A weight-loss estimate should be traceable to the messy narrative from which it came. The aim is to quantify without fully flattening the human context.</p>
+
+      <p>This is still a work in progress. The extraction is imperfect. The communities are not representative. The data should be interpreted cautiously. But the phenomenon itself is too important to ignore. GLP-1 drugs are changing obesity treatment, diabetes care, pharmaceutical markets, online medicine, and the relationship between patients, consumers, physicians, and platforms.</p>
+
+      <p>This website is a first attempt to map that change from the ground up: through the stories people tell while trying to navigate one of the most consequential medical consumer movements of the decade.</p>
+
+      <footer class="home-footnotes" aria-label="Site caveats and shortcuts">
+        <p>This is observational social-media text mining, not medical advice, clinical evidence, or proof of causality. Each plot point remains linked back to the underlying Reddit text.</p>
+        <p class="note-links"><a href="weight-change/">Choose a weight-change view</a><a href="side-effects/">Choose a side-effect view</a><a href="methods/">Read the methods</a></p>
+      </footer>
+    </article>
   </main>
 </body>
 """
