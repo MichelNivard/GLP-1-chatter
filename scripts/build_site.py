@@ -50,6 +50,55 @@ FAMILY_COPY = {
     },
 }
 
+WEIGHT_PAGE_COPY = {
+    "reta": [
+        (
+            "This page follows retatrutide where it surfaces in Reddit's faster, more risk-tolerant "
+            "corners. The crawler looks for retatrutide, reta, and the common misspelling "
+            "retaglutide across selected subreddits, then keeps the original post or comment "
+            "attached to every extracted point."
+        ),
+        (
+            "Each candidate is read one at a time by gpt-5.4-nano, which is asked to identify "
+            "starting weight, current weight, duration, dose narrative, side effects, and whether "
+            "the loss belongs to retatrutide itself, a stack, a switch interval, or an earlier "
+            "GLP-1 history. The prompt explicitly warns the model not to treat GW as current "
+            "weight, not to confuse dose units with body weight, and not to turn a user's broader "
+            "journey into retatrutide loss."
+        ),
+    ],
+    "tirz": [
+        (
+            "This page tracks the tirzepatide layer of Reddit's weight-loss conversation: "
+            "Mounjaro and Zepbound, but also shorthand such as tirz and user language like MJ in "
+            "the source text. The crawler searches the configured terms slowly and politely, "
+            "stores the full Reddit text, and revisits recent material on a schedule while the "
+            "historical backfill works through older posts."
+        ),
+        (
+            "Each candidate is read one at a time by gpt-5.4-nano. The extraction asks for SW "
+            "and CW when Reddit users write in abbreviations, separates current weight from goal "
+            "weight, and tries not to assign prior Ozempic, Wegovy, semaglutide, or later "
+            "retatrutide history to tirzepatide unless the interval is stated."
+        ),
+    ],
+    "sema": [
+        (
+            "This page reads the semaglutide archive: Ozempic, Wegovy, Rybelsus, semaglutide, "
+            "and sema. These communities contain some of the earliest mass-market GLP-1 "
+            "self-reports, mixing careful diaries with panic, celebration, dosing confusion, "
+            "shortages, compounding questions, and ordinary Reddit noise."
+        ),
+        (
+            "Each candidate is read one at a time by gpt-5.4-nano. The model is instructed to "
+            "extract reported starting and current weight, duration, dose narrative, and side "
+            "effects, while avoiding common traps: goal weight is not an end weight, a pregnancy "
+            "or historical high is not automatically a drug baseline, and a loss from a whole "
+            "GLP-1 journey should not be credited to semaglutide unless the post says so."
+        ),
+    ],
+}
+
 DOSE_MG_RE = re.compile(r"(\d+(?:\.\d+)?)\s*mg\b", re.IGNORECASE)
 
 FALLBACK_FAMILY_COMPOUNDS = {
@@ -1025,7 +1074,10 @@ def render_weight_choice_page(summary: dict[str, Any], generated_at: str) -> str
     <section class="page-heading">
       <p class="eyebrow">Weight Change</p>
       <h1>Choose a drug family.</h1>
-      <p>Each plot shows mined Reddit reports for one drug family. Duration is shown in weeks, weight change is shown in kilograms, and weight loss is negative by convention. You can switch drug families from the tabs on any plot page.</p>
+      <div class="page-copy">
+        <p>This site turns a messy Reddit archive into a cautious set of weight-change plots. The crawler searches selected GLP-1 communities for configured terms: retatrutide, reta, and retaglutide; tirzepatide, tirz, Mounjaro, and Zepbound; semaglutide, sema, Ozempic, Wegovy, and Rybelsus. During the current historical catch-up period, a backfill workflow runs every 12 hours; regular scheduled crawls keep checking recent material.</p>
+        <p>Each candidate post or comment is stored with its original text and URL, then read once by gpt-5.4-nano as a single-item extraction. The prompt asks for Reddit abbreviations such as SW and CW, tries not to mistake GW for current weight, and leaves unit conversion to code. On the drug pages, weight loss is plotted as negative kilograms, and points with large losses, gains over 5 kg, or very long durations are reread by gpt-5.4-mini before they become canonical.</p>
+      </div>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
     <section class="route-grid route-grid-wide choice-grid" aria-label="Weight-change drug choices">
@@ -1136,6 +1188,32 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
         if has_rct
         else ""
     )
+    rct_context = (
+        "The pale blue line and band show uploaded aggregate clinical-trial data for comparison: "
+        "a controlled setting behind the messier Reddit reports. That overlay is never used in "
+        "the Reddit fitted curve."
+        if has_rct
+        else (
+            "If an external clinical-trial CSV is uploaded for this drug, it will appear as a "
+            "pale blue comparison line and uncertainty band. Trial data are kept out of the "
+            "Reddit fitted curve."
+        )
+    )
+    page_copy = "\n".join(
+        f"        <p>{html.escape(paragraph)}</p>"
+        for paragraph in [
+            *WEIGHT_PAGE_COPY[family],
+            (
+                "The dots below are the site's best current reading of Reddit reports with at "
+                "least 21 days of duration. Weight loss is plotted as negative weight change in "
+                "kilograms, so a 10 kg loss appears as -10 kg. Hover or click a point to see the "
+                "original text, Reddit URL, extracted fields, confidence, evidence, and notes. "
+                "Large losses, gains over 5 kg, and very long durations are sent through "
+                "gpt-5.4-mini for a second read before the canonical extraction is shown."
+            ),
+            rct_context,
+        ]
+    )
     body = f"""
 <body data-view="scatter" data-family="{family}" data-json="../data/{family}.json">
   {site_header("../", active="weight")}
@@ -1144,7 +1222,9 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
       {family_tabs(family, current_view="weight")}
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Weight change over time</h1>
-      <p>{html.escape(FAMILY_COPY[family]["description"])} Scatterplots include mined Reddit user reports with duration of at least 21 days. Weight loss is plotted as negative weight change in kilograms.</p>
+      <div class="page-copy">
+{page_copy}
+      </div>
       {rct_note}
       <p class="meta">Generated {html.escape(generated_at)}</p>
       <div class="page-actions">

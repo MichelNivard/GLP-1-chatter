@@ -114,6 +114,21 @@ a {
   padding: 1.5rem 0;
 }
 
+.page-copy {
+  max-width: 980px;
+}
+
+.page-copy p {
+  color: #3f463e;
+  font-size: 1.02rem;
+  line-height: 1.68;
+  max-width: 920px;
+}
+
+.page-copy p:last-child {
+  margin-bottom: 0;
+}
+
 .intro-copy {
   max-width: 820px;
 }
