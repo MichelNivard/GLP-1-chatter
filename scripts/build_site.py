@@ -23,6 +23,7 @@ from glp1_common import (
     connect_db,
     ensure_schema,
     load_side_effect_normalization,
+    read_json,
     row_json,
     utc_now_iso,
     write_json,
@@ -35,6 +36,12 @@ FAMILY_NAMES = {
 }
 
 DOSE_MG_RE = re.compile(r"(\d+(?:\.\d+)?)\s*mg\b", re.IGNORECASE)
+
+FALLBACK_FAMILY_COMPOUNDS = {
+    "reta": {"canonical_name": "retatrutide", "family": "reta", "confidence": 1.0, "source": "drug_family"},
+    "tirz": {"canonical_name": "tirzepatide", "family": "tirz", "confidence": 1.0, "source": "drug_family"},
+    "sema": {"canonical_name": "semaglutide", "family": "sema", "confidence": 1.0, "source": "drug_family"},
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -311,6 +318,256 @@ def side_effect_counts(rows: list[Any], mapping: dict[str, str]) -> list[dict[st
     return [{"phrase": phrase, "count": count} for phrase, count in counter.most_common()]
 
 
+def normalize_compound_key(value: str | None) -> str:
+    if not value:
+        return ""
+    value = value.strip().lower().replace("_", " ")
+    value = re.sub(r"\s+", " ", value)
+    value = re.sub(r"^[\"'`]+|[\"'`]+$", "", value)
+    return value.strip()
+
+
+def split_compound_candidate(value: str) -> list[str]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+    pieces = re.split(r"\s*(?:,|;|\+|&|\band\b|\bwith\b|\bw\/\b)\s*", text, flags=re.IGNORECASE)
+    cleaned = [piece.strip(" .()[]{}") for piece in pieces if piece.strip(" .()[]{}")]
+    return cleaned or [text]
+
+
+def load_compound_aliases() -> tuple[dict[str, list[dict[str, Any]]], set[str]]:
+    path = ROOT / "config" / "compound_normalization.json"
+    if not path.exists():
+        return {}, set()
+    config = read_json(path)
+    aliases: dict[str, list[dict[str, Any]]] = {}
+    for item in config.get("aliases", []):
+        compounds = [
+            {
+                "canonical_name": name,
+                "family": item.get("family") or "unclear",
+                "confidence": 1.0,
+                "source": "alias",
+            }
+            for name in item.get("canonical_names", [])
+        ]
+        for alias in item.get("aliases", []):
+            key = normalize_compound_key(alias)
+            if key:
+                aliases[key] = compounds
+    ignore = {normalize_compound_key(value) for value in config.get("ignore_terms", []) if normalize_compound_key(value)}
+    return aliases, ignore
+
+
+def load_compound_normalization() -> dict[str, Any]:
+    aliases, ignore = load_compound_aliases()
+    exact: dict[str, list[dict[str, Any]]] = {}
+    normalized: dict[str, list[dict[str, Any]]] = dict(aliases)
+    stats: dict[str, Any] = {"source": "alias_only", "raw_names": 0, "unresolved_remaining": None}
+    cache_path = ROOT / "data" / "compound_normalizations.json"
+    if cache_path.exists():
+        cache = read_json(cache_path)
+        stats = cache.get("stats", stats)
+        stats["source"] = "data/compound_normalizations.json"
+        for raw, item in cache.get("items", {}).items():
+            compounds = []
+            for compound in item.get("compounds", []):
+                canonical = str(compound.get("canonical_name") or "").strip()
+                if not canonical:
+                    continue
+                compounds.append(
+                    {
+                        "canonical_name": canonical,
+                        "family": compound.get("family") or "unclear",
+                        "confidence": compound.get("confidence"),
+                        "source": compound.get("source") or item.get("source") or "normalization_cache",
+                    }
+                )
+            exact[raw] = compounds
+            normalized[normalize_compound_key(raw)] = compounds
+    return {"exact": exact, "normalized": normalized, "ignore": ignore, "stats": stats}
+
+
+def normalize_compound(raw: str, normalization: dict[str, Any]) -> list[dict[str, Any]]:
+    if not raw:
+        return []
+    key = normalize_compound_key(raw)
+    if not key or key in normalization["ignore"]:
+        return []
+    exact = normalization["exact"].get(raw)
+    if exact is not None:
+        return [dict(item) for item in exact]
+    compounds = normalization["normalized"].get(key)
+    if compounds is not None:
+        return [dict(item) for item in compounds]
+
+    split_compounds: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for piece in split_compound_candidate(raw):
+        piece_key = normalize_compound_key(piece)
+        if not piece_key or piece_key in normalization["ignore"]:
+            continue
+        mapped = normalization["normalized"].get(piece_key)
+        if mapped is None:
+            return []
+        for compound in mapped:
+            canonical = compound["canonical_name"]
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            split_compounds.append(dict(compound))
+    return split_compounds
+
+
+def focal_compounds(row: Any, normalization: dict[str, Any]) -> list[dict[str, Any]]:
+    compounds = normalize_compound(row["drug_name_mentioned"] or "", normalization)
+    if compounds:
+        return compounds
+    fallback = FALLBACK_FAMILY_COMPOUNDS.get(row["drug_family"])
+    return [dict(fallback)] if fallback else []
+
+
+def text_excerpt(row: Any, limit: int = 520) -> str:
+    text = row["processed_full_text"] or row["full_text"] or ""
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 1].rstrip()}..."
+
+
+def build_concurrent_payload(rows: list[Any], generated_at: str) -> dict[str, Any]:
+    normalization = load_compound_normalization()
+    nodes: dict[str, dict[str, Any]] = {}
+    link_map: dict[tuple[str, str], dict[str, Any]] = {}
+    report_lookup: dict[int, dict[str, Any]] = {}
+    unresolved_counter: Counter[str] = Counter()
+
+    def add_node(compound: dict[str, Any], report_id: int, is_stack: bool) -> None:
+        name = compound["canonical_name"]
+        node = nodes.setdefault(
+            name,
+            {
+                "id": name,
+                "label": name,
+                "family": compound.get("family") or "unclear",
+                "count": 0,
+                "stack_count": 0,
+                "report_ids": [],
+                "stack_report_ids": [],
+            },
+        )
+        node["count"] += 1
+        node["report_ids"].append(report_id)
+        if is_stack:
+            node["stack_count"] += 1
+            node["stack_report_ids"].append(report_id)
+
+    def add_link(source: str, target: str, report_id: int, is_stack: bool, attribution: str) -> None:
+        a, b = sorted((source, target))
+        link = link_map.setdefault(
+            (a, b),
+            {
+                "source": a,
+                "target": b,
+                "count": 0,
+                "stack_count": 0,
+                "report_ids": [],
+                "stack_report_ids": [],
+                "attribution_counts": {},
+            },
+        )
+        link["count"] += 1
+        link["report_ids"].append(report_id)
+        link["attribution_counts"][attribution] = link["attribution_counts"].get(attribution, 0) + 1
+        if is_stack:
+            link["stack_count"] += 1
+            link["stack_report_ids"].append(report_id)
+
+    for row in rows:
+        report_id = int(row["report_id"])
+        raw_others = [str(value).strip() for value in row_json(row, "other_compounds_concurrent", []) if str(value).strip()]
+        if not raw_others:
+            continue
+        compounds: list[dict[str, Any]] = []
+        for compound in focal_compounds(row, normalization):
+            compounds.append(compound)
+        for raw in raw_others:
+            normalized = normalize_compound(raw, normalization)
+            if not normalized:
+                unresolved_counter[raw] += 1
+            compounds.extend(normalized)
+
+        unique: dict[str, dict[str, Any]] = {}
+        for compound in compounds:
+            canonical = str(compound.get("canonical_name") or "").strip()
+            if canonical:
+                unique.setdefault(canonical, {**compound, "canonical_name": canonical})
+        if len(unique) < 2:
+            continue
+
+        is_stack = row["attribution"] == "stack"
+        compound_names = sorted(unique)
+        for compound in unique.values():
+            add_node(compound, report_id, is_stack)
+        for i, source in enumerate(compound_names):
+            for target in compound_names[i + 1 :]:
+                add_link(source, target, report_id, is_stack, row["attribution"] or "unclear")
+
+        report_lookup[report_id] = {
+            "report_id": report_id,
+            "post_id": row["post_id"],
+            "created_iso": row["created_iso"],
+            "subreddit": row["subreddit"],
+            "url": row["url"],
+            "title": row["title"],
+            "drug_family": row["drug_family"],
+            "drug_name_mentioned": row["drug_name_mentioned"],
+            "focal_compounds": [compound["canonical_name"] for compound in focal_compounds(row, normalization)],
+            "other_compounds_raw": raw_others,
+            "compounds": compound_names,
+            "attribution": row["attribution"],
+            "use_status": row["use_status"],
+            "dose_strong": row["dose_strong"],
+            "duration_raw": row["duration_raw"],
+            "duration_weeks": row["duration_weeks"],
+            "weight_change_kg": row["weight_change_kg"],
+            "confidence": row["confidence"],
+            "evidence": row["evidence"],
+            "notes": row["notes"],
+            "text_excerpt": text_excerpt(row),
+        }
+
+    node_list = sorted(nodes.values(), key=lambda item: (-item["count"], item["label"]))
+    link_list = sorted(link_map.values(), key=lambda item: (-item["count"], item["source"], item["target"]))
+    for node in node_list:
+        node["report_ids"] = sorted(set(node["report_ids"]))
+        node["stack_report_ids"] = sorted(set(node["stack_report_ids"]))
+    for link in link_list:
+        link["report_ids"] = sorted(set(link["report_ids"]))
+        link["stack_report_ids"] = sorted(set(link["stack_report_ids"]))
+
+    return {
+        "generated_at": generated_at,
+        "nodes": node_list,
+        "links": link_list,
+        "reports": report_lookup,
+        "normalization": {
+            "stats": normalization["stats"],
+            "unresolved_terms": [
+                {"raw": raw, "count": count}
+                for raw, count in unresolved_counter.most_common(40)
+            ],
+        },
+        "summary": {
+            "nodes": len(node_list),
+            "links": len(link_list),
+            "reports": len(report_lookup),
+            "stack_reports": len([report for report in report_lookup.values() if report["attribution"] == "stack"]),
+        },
+    }
+
+
 def copy_assets(site_dir: Path) -> None:
     assets_dir = site_dir / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -360,6 +617,7 @@ def render_home(summary: dict[str, Any], generated_at: str) -> str:
       <a href="reta/">Reta</a>
       <a href="tirz/">Tirz</a>
       <a href="sema/">Sema</a>
+      <a href="concurrent/">Concurrent use</a>
     </nav>
   </header>
   <main class="home">
@@ -379,6 +637,7 @@ def render_home(summary: dict[str, Any], generated_at: str) -> str:
         <li><a href="reta/">Retatrutide scatterplot</a> <a href="reta/side-effects.html">side effects</a></li>
         <li><a href="tirz/">Tirzepatide scatterplot</a> <a href="tirz/side-effects.html">side effects</a></li>
         <li><a href="sema/">Semaglutide scatterplot</a> <a href="sema/side-effects.html">side effects</a></li>
+        <li><a href="concurrent/">Concurrent-use network</a></li>
       </ul>
     </section>
   </main>
@@ -402,6 +661,7 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
       <a href="../reta/">Reta</a>
       <a href="../tirz/">Tirz</a>
       <a href="../sema/">Sema</a>
+      <a href="../concurrent/">Concurrent use</a>
       <a href="side-effects.html">Side effects</a>
     </nav>
   </header>
@@ -440,6 +700,7 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
       <a href="../reta/">Reta</a>
       <a href="../tirz/">Tirz</a>
       <a href="../sema/">Sema</a>
+      <a href="../concurrent/">Concurrent use</a>
       <a href="./">Scatterplot</a>
     </nav>
   </header>
@@ -474,6 +735,50 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
     return html_page(f"{name} Side Effects", body, asset_prefix="../")
 
 
+def render_concurrent_page(generated_at: str) -> str:
+    body = f"""
+<body data-view="concurrent" data-json="../data/concurrent.json">
+  <header class="site-header">
+    <nav class="nav">
+      <a href="../" class="brand">GLP-1 Reddit Reports</a>
+      <a href="../reta/">Reta</a>
+      <a href="../tirz/">Tirz</a>
+      <a href="../sema/">Sema</a>
+    </nav>
+  </header>
+  <main class="page">
+    <section class="page-heading">
+      <p class="eyebrow">All drug families</p>
+      <h1>Concurrent-use network</h1>
+      <p>Circular network of normalized compounds mentioned together in parsed Reddit reports. Edges connect compounds appearing in the same extracted report; stack-only mode restricts counts to reports marked as stacks by the parser.</p>
+      <p class="meta">Generated {html.escape(generated_at)}</p>
+    </section>
+    <section class="network-controls" aria-label="Network controls">
+      <button type="button" class="segmented active" data-network-mode="all">All concurrent mentions</button>
+      <button type="button" class="segmented" data-network-mode="stack">Stack attribution only</button>
+    </section>
+    <section class="network-layout">
+      <div class="network-area">
+        <div id="network-status" class="status">Loading network...</div>
+        <svg id="compound-network" class="compound-network" role="img" aria-label="Concurrent compound network"></svg>
+      </div>
+      <aside id="network-detail" class="detail-panel network-detail" aria-live="polite">
+        <h2>Connection detail</h2>
+        <p>Select an edge or compound to inspect contributing reports.</p>
+      </aside>
+    </section>
+    <section class="table-section">
+      <h2>Normalization audit</h2>
+      <p>Compound names use <code>config/compound_normalization.json</code> plus optional cached nano normalization in <code>data/compound_normalizations.json</code>.</p>
+      <div id="normalization-audit" class="audit-grid"></div>
+    </section>
+  </main>
+  <script src="../assets/app.js"></script>
+</body>
+"""
+    return html_page("Concurrent GLP-1 Use Network", body, asset_prefix="../")
+
+
 def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     conn = connect_db(db_path)
     ensure_schema(conn)
@@ -489,6 +794,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     generated_at = utc_now_iso()
     summary = {"generated_at": generated_at, "families": {}}
     family_payloads: dict[str, dict[str, Any]] = {}
+    concurrent_payload = build_concurrent_payload(reports, generated_at)
 
     for family in DRUG_FAMILIES:
         rows = reports_by_family.get(family, [])
@@ -516,7 +822,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
         }
 
     if dry_run:
-        return summary
+        return {**summary, "concurrent": concurrent_payload["summary"]}
 
     if site_dir.exists():
         shutil.rmtree(site_dir)
@@ -524,6 +830,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     copy_assets(site_dir)
     (site_dir / ".nojekyll").write_text("", encoding="utf-8")
     write_json(site_dir / "data" / "summary.json", summary)
+    write_json(site_dir / "data" / "concurrent.json", concurrent_payload)
     for family, payload in family_payloads.items():
         write_json(site_dir / "data" / f"{family}.json", payload)
         family_dir = site_dir / family
@@ -536,6 +843,9 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
             render_side_effect_page(family, generated_at),
             encoding="utf-8",
         )
+    concurrent_dir = site_dir / "concurrent"
+    concurrent_dir.mkdir(parents=True, exist_ok=True)
+    (concurrent_dir / "index.html").write_text(render_concurrent_page(generated_at), encoding="utf-8")
     (site_dir / "index.html").write_text(render_home(summary, generated_at), encoding="utf-8")
     return summary
 

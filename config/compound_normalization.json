@@ -1,0 +1,184 @@
+{
+  "aliases": [
+    {
+      "canonical_names": ["retatrutide"],
+      "family": "reta",
+      "aliases": ["reta", "retatrutide", "retaglutide", "ret"]
+    },
+    {
+      "canonical_names": ["tirzepatide"],
+      "family": "tirz",
+      "aliases": [
+        "tirz",
+        "tirzepatide",
+        "mounjaro",
+        "zepbound",
+        "mj",
+        "zep",
+        "triz",
+        "tirze",
+        "tirezepatide",
+        "tirzepetide",
+        "monjaro",
+        "monjauro",
+        "moujaro"
+      ]
+    },
+    {
+      "canonical_names": ["semaglutide"],
+      "family": "sema",
+      "aliases": ["sema", "semaglutide", "ozempic", "wegovy", "rybelsus"]
+    },
+    {
+      "canonical_names": ["cagrilintide"],
+      "family": "amylin",
+      "aliases": ["cagri", "cagrilintide"]
+    },
+    {
+      "canonical_names": ["cagrilintide", "semaglutide"],
+      "family": "combination",
+      "aliases": ["cagrisema", "cagri sema", "cagri-sema"]
+    },
+    {
+      "canonical_names": ["metformin"],
+      "family": "diabetes_drug",
+      "aliases": ["metformin"]
+    },
+    {
+      "canonical_names": ["phentermine"],
+      "family": "stimulant",
+      "aliases": ["phentermine"]
+    },
+    {
+      "canonical_names": ["tesofensine"],
+      "family": "stimulant",
+      "aliases": ["tesofensine"]
+    },
+    {
+      "canonical_names": ["lisdexamfetamine"],
+      "family": "stimulant",
+      "aliases": ["vyvanse", "lisdexamfetamine"]
+    },
+    {
+      "canonical_names": ["amphetamine/dextroamphetamine"],
+      "family": "stimulant",
+      "aliases": ["adderall", "adderal", "amphetamine", "dextroamphetamine"]
+    },
+    {
+      "canonical_names": ["testosterone"],
+      "family": "hormone",
+      "aliases": ["testosterone", "trt"]
+    },
+    {
+      "canonical_names": ["estradiol"],
+      "family": "hormone",
+      "aliases": ["estradiol", "estradiol patch"]
+    },
+    {
+      "canonical_names": ["progesterone"],
+      "family": "hormone",
+      "aliases": ["progesterone", "prog"]
+    },
+    {
+      "canonical_names": ["hormone replacement therapy"],
+      "family": "hormone",
+      "aliases": ["hrt", "hormone replacement therapy"]
+    },
+    {
+      "canonical_names": ["human growth hormone"],
+      "family": "hormone",
+      "aliases": ["hgh", "human growth hormone"]
+    },
+    {
+      "canonical_names": ["hCG"],
+      "family": "hormone",
+      "aliases": ["hcg"]
+    },
+    {
+      "canonical_names": ["tesamorelin"],
+      "family": "peptide",
+      "aliases": ["tesamorelin", "tesa"]
+    },
+    {
+      "canonical_names": ["ipamorelin"],
+      "family": "peptide",
+      "aliases": ["ipamorelin", "ipa"]
+    },
+    {
+      "canonical_names": ["sermorelin"],
+      "family": "peptide",
+      "aliases": ["sermorelin"]
+    },
+    {
+      "canonical_names": ["BPC-157"],
+      "family": "peptide",
+      "aliases": ["bpc157", "bpc-157"]
+    },
+    {
+      "canonical_names": ["TB-500"],
+      "family": "peptide",
+      "aliases": ["tb500", "tb-500"]
+    },
+    {
+      "canonical_names": ["MOTS-c"],
+      "family": "peptide",
+      "aliases": ["mots-c", "mots c", "motsc"]
+    },
+    {
+      "canonical_names": ["SS-31"],
+      "family": "peptide",
+      "aliases": ["ss-31", "ss31"]
+    },
+    {
+      "canonical_names": ["NAD+"],
+      "family": "supplement",
+      "aliases": ["nad+", "nad"]
+    },
+    {
+      "canonical_names": ["vitamin B12"],
+      "family": "supplement",
+      "aliases": ["b12", "vitamin b12", "tirzepatide/b12"]
+    },
+    {
+      "canonical_names": ["creatine"],
+      "family": "supplement",
+      "aliases": ["creatine"]
+    },
+    {
+      "canonical_names": ["insulin"],
+      "family": "diabetes_drug",
+      "aliases": ["insulin", "humalog", "humulin"]
+    },
+    {
+      "canonical_names": ["Trulicity"],
+      "family": "glp1_other",
+      "aliases": ["trulicity", "dulaglutide"]
+    },
+    {
+      "canonical_names": ["Zofran"],
+      "family": "other_drug",
+      "aliases": ["zofran", "ondansetron"]
+    },
+    {
+      "canonical_names": ["Wellbutrin"],
+      "family": "other_drug",
+      "aliases": ["wellbutrin", "bupropion"]
+    }
+  ],
+  "ignore_terms": [
+    "none",
+    "unknown",
+    "null",
+    "n/a",
+    "not stated",
+    "keto",
+    "vlcd",
+    "alcohol",
+    "digestive enzymes",
+    "women's probiotic",
+    "probiotic",
+    "multivitamin",
+    "thyroid medication",
+    "type 2 diabetes medication"
+  ]
+}

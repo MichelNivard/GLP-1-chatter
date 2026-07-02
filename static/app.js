@@ -225,6 +225,216 @@ function renderSideEffects(data) {
   });
 }
 
+function networkFamilyClass(family) {
+  return `compound-family-${String(family || "unclear").replace(/[^a-z0-9_-]/gi, "-").toLowerCase()}`;
+}
+
+function attributionText(counts) {
+  return Object.entries(counts || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, value]) => `${key}: ${value}`)
+    .join("; ") || "n/a";
+}
+
+function reportMiniCard(report) {
+  const compounds = (report.compounds || []).join(", ");
+  const raw = (report.other_compounds_raw || []).join(", ");
+  return `
+    <article class="report-mini">
+      <h3>${htmlEscape(report.created_iso || "unknown date")} · r/${htmlEscape(report.subreddit || "unknown")}</h3>
+      <p><strong>${htmlEscape(report.drug_name_mentioned || report.drug_family || "unknown focal drug")}</strong> with ${htmlEscape(raw || compounds || "n/a")}</p>
+      <dl class="detail-list compact">
+        <div><dt>Normalized</dt><dd>${htmlEscape(compounds || "n/a")}</dd></div>
+        <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
+        <div><dt>Dose</dt><dd>${htmlEscape(report.dose_strong || "n/a")}</dd></div>
+        <div><dt>Duration</dt><dd>${htmlEscape(report.duration_raw || "n/a")} (${fmt(report.duration_weeks, 1, " weeks")})</dd></div>
+        <div><dt>Weight change</dt><dd>${fmt(report.weight_change_kg, 1, " kg")}</dd></div>
+        <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
+        <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
+      </dl>
+      <p class="excerpt">${htmlEscape(report.text_excerpt || "")}</p>
+      <a class="reddit-link" href="${htmlEscape(report.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
+    </article>
+  `;
+}
+
+function selectedReportIds(item, mode) {
+  return mode === "stack" ? (item.stack_report_ids || []) : (item.report_ids || []);
+}
+
+function renderNetworkLinkDetail(link, data, mode) {
+  const detail = document.getElementById("network-detail");
+  const reportIds = selectedReportIds(link, mode);
+  const reports = reportIds.map((id) => data.reports[String(id)] || data.reports[id]).filter(Boolean);
+  detail.innerHTML = `
+    <h2>${htmlEscape(link.source)} + ${htmlEscape(link.target)}</h2>
+    <dl class="detail-list">
+      <div><dt>Reports</dt><dd>${reportIds.length}</dd></div>
+      <div><dt>All-report count</dt><dd>${link.count}</dd></div>
+      <div><dt>Stack-only count</dt><dd>${link.stack_count}</dd></div>
+      <div><dt>Attribution mix</dt><dd>${htmlEscape(attributionText(link.attribution_counts))}</dd></div>
+    </dl>
+    <h3>Contributing reports</h3>
+    ${reports.slice(0, 30).map(reportMiniCard).join("") || "<p>No reports in this mode.</p>"}
+  `;
+}
+
+function renderNetworkNodeDetail(node, data, mode) {
+  const detail = document.getElementById("network-detail");
+  const reportIds = selectedReportIds(node, mode);
+  const reports = reportIds.map((id) => data.reports[String(id)] || data.reports[id]).filter(Boolean);
+  detail.innerHTML = `
+    <h2>${htmlEscape(node.label)}</h2>
+    <dl class="detail-list">
+      <div><dt>Family</dt><dd>${htmlEscape(node.family || "unclear")}</dd></div>
+      <div><dt>Reports</dt><dd>${reportIds.length}</dd></div>
+      <div><dt>All-report count</dt><dd>${node.count}</dd></div>
+      <div><dt>Stack-only count</dt><dd>${node.stack_count}</dd></div>
+    </dl>
+    <h3>Contributing reports</h3>
+    ${reports.slice(0, 30).map(reportMiniCard).join("") || "<p>No reports in this mode.</p>"}
+  `;
+}
+
+function renderNormalizationAudit(data) {
+  const audit = document.getElementById("normalization-audit");
+  if (!audit) return;
+  const stats = data.normalization?.stats || {};
+  const unresolved = data.normalization?.unresolved_terms || [];
+  audit.innerHTML = `
+    <div>
+      <h3>Normalization source</h3>
+      <dl class="detail-list">
+        <div><dt>Source</dt><dd>${htmlEscape(stats.source || "alias_only")}</dd></div>
+        <div><dt>Raw names</dt><dd>${htmlEscape(stats.raw_names ?? "n/a")}</dd></div>
+        <div><dt>Alias normalized</dt><dd>${htmlEscape(stats.alias_normalized ?? "n/a")}</dd></div>
+        <div><dt>Nano normalized</dt><dd>${htmlEscape(stats.openai_normalized ?? "n/a")}</dd></div>
+        <div><dt>Remaining unresolved</dt><dd>${htmlEscape(stats.unresolved_remaining ?? "n/a")}</dd></div>
+      </dl>
+    </div>
+    <div>
+      <h3>Top unresolved terms</h3>
+      ${
+        unresolved.length
+          ? `<table><thead><tr><th>Raw term</th><th>Count</th></tr></thead><tbody>${unresolved
+              .slice(0, 20)
+              .map((item) => `<tr><td>${htmlEscape(item.raw)}</td><td>${item.count}</td></tr>`)
+              .join("")}</tbody></table>`
+          : "<p>No unresolved terms in rendered graph data.</p>"
+      }
+    </div>
+  `;
+}
+
+function renderConcurrent(data, mode = "all") {
+  const svg = document.getElementById("compound-network");
+  const status = document.getElementById("network-status");
+  svg.innerHTML = "";
+  const countKey = mode === "stack" ? "stack_count" : "count";
+  const links = (data.links || []).filter((link) => Number(link[countKey] || 0) > 0);
+  const linkedNames = new Set();
+  links.forEach((link) => {
+    linkedNames.add(link.source);
+    linkedNames.add(link.target);
+  });
+  const familyOrder = ["reta", "tirz", "sema", "amylin", "glp1_other", "diabetes_drug", "stimulant", "hormone", "peptide", "supplement", "other_drug", "lifestyle", "unclear"];
+  const nodes = (data.nodes || [])
+    .filter((node) => linkedNames.has(node.id) && Number(node[countKey] || 0) > 0)
+    .sort((a, b) => {
+      const familyDiff = familyOrder.indexOf(a.family) - familyOrder.indexOf(b.family);
+      if (familyDiff) return familyDiff;
+      return b[countKey] - a[countKey] || a.label.localeCompare(b.label);
+    });
+
+  renderNormalizationAudit(data);
+  if (!nodes.length || !links.length) {
+    status.textContent = "No concurrent-use reports available for this mode.";
+    svg.setAttribute("viewBox", "0 0 900 680");
+    return;
+  }
+  status.textContent = `${data.summary?.reports || 0} reports, ${nodes.length} compounds, ${links.length} connections shown (${mode === "stack" ? "stack-only" : "all concurrent mentions"}).`;
+
+  const width = 940;
+  const height = 700;
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = 265;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  const positions = new Map();
+  nodes.forEach((node, index) => {
+    const angle = -Math.PI / 2 + (index / nodes.length) * Math.PI * 2;
+    positions.set(node.id, {
+      x: cx + Math.cos(angle) * radius,
+      y: cy + Math.sin(angle) * radius,
+      angle,
+    });
+  });
+
+  const maxLink = Math.max(...links.map((link) => Number(link[countKey] || 0)));
+  const edgeLayer = el("g", { class: "network-edges" });
+  links.forEach((link) => {
+    const source = positions.get(link.source);
+    const target = positions.get(link.target);
+    if (!source || !target) return;
+    const count = Number(link[countKey] || 0);
+    const path = el("path", {
+      d: `M${source.x.toFixed(2)},${source.y.toFixed(2)} Q${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`,
+      class: "network-edge",
+      "stroke-width": (1.2 + Math.sqrt(count / maxLink) * 7).toFixed(2),
+      tabindex: 0,
+    });
+    path.appendChild(el("title", {}, `${link.source} + ${link.target}: ${count} reports`));
+    path.addEventListener("click", () => renderNetworkLinkDetail(link, data, mode));
+    path.addEventListener("mouseenter", () => renderNetworkLinkDetail(link, data, mode));
+    path.addEventListener("focus", () => renderNetworkLinkDetail(link, data, mode));
+    edgeLayer.appendChild(path);
+  });
+  svg.appendChild(edgeLayer);
+
+  const maxNode = Math.max(...nodes.map((node) => Number(node[countKey] || 0)));
+  const nodeLayer = el("g", { class: "network-nodes" });
+  nodes.forEach((node) => {
+    const position = positions.get(node.id);
+    const count = Number(node[countKey] || 0);
+    const nodeRadius = 8 + Math.sqrt(count / maxNode) * 14;
+    const group = el("g", { class: `network-node ${networkFamilyClass(node.family)}`, tabindex: 0 });
+    const circle = el("circle", { cx: position.x, cy: position.y, r: nodeRadius.toFixed(2) });
+    const labelRadius = radius + 34;
+    const lx = cx + Math.cos(position.angle) * labelRadius;
+    const ly = cy + Math.sin(position.angle) * labelRadius;
+    const anchor = Math.cos(position.angle) > 0.18 ? "start" : Math.cos(position.angle) < -0.18 ? "end" : "middle";
+    const label = el("text", { x: lx.toFixed(2), y: ly.toFixed(2), "text-anchor": anchor }, node.label);
+    group.appendChild(circle);
+    group.appendChild(label);
+    group.appendChild(el("title", {}, `${node.label}: ${count} reports`));
+    group.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
+    group.addEventListener("mouseenter", () => renderNetworkNodeDetail(node, data, mode));
+    group.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
+    nodeLayer.appendChild(group);
+  });
+  svg.appendChild(nodeLayer);
+
+  const legendItems = [
+    ["reta", "Retatrutide"],
+    ["tirz", "Tirzepatide"],
+    ["sema", "Semaglutide"],
+    ["amylin", "Amylin"],
+    ["peptide", "Peptide"],
+    ["hormone", "Hormone"],
+    ["other_drug", "Other drug"],
+  ];
+  const legend = el("g", { class: "network-legend" });
+  legendItems.forEach(([family, label], index) => {
+    const y = 26 + index * 22;
+    legend.appendChild(el("circle", { cx: 24, cy: y, r: 6, class: networkFamilyClass(family) }));
+    legend.appendChild(el("text", { x: 38, y: y + 4 }, label));
+  });
+  svg.appendChild(legend);
+
+  if (links[0]) renderNetworkLinkDetail(links[0], data, mode);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const view = document.body.dataset.view;
   if (!view) return;
@@ -232,8 +442,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await loadPageData();
     if (view === "scatter") renderScatter(data);
     if (view === "side-effects") renderSideEffects(data);
+    if (view === "concurrent") {
+      let mode = "all";
+      document.querySelectorAll("[data-network-mode]").forEach((button) => {
+        button.addEventListener("click", () => {
+          mode = button.dataset.networkMode;
+          document.querySelectorAll("[data-network-mode]").forEach((item) => item.classList.toggle("active", item === button));
+          renderConcurrent(data, mode);
+        });
+      });
+      renderConcurrent(data, mode);
+    }
   } catch (error) {
-    const status = document.getElementById("plot-status") || document.querySelector(".status");
+    const status = document.getElementById("plot-status") || document.getElementById("network-status") || document.querySelector(".status");
     if (status) status.textContent = error.message;
   }
 });

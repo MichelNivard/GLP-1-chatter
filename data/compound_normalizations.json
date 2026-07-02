@@ -1,0 +1,1614 @@
+{
+  "alias_config": "config/compound_normalization.json",
+  "generated_at": "2026-07-02T08:02:01+00:00",
+  "items": {
+    "Adderall": {
+      "compounds": [
+        {
+          "canonical_name": "amphetamine/dextroamphetamine",
+          "confidence": 1.0,
+          "family": "stimulant",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Adderall",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "B12": {
+      "compounds": [
+        {
+          "canonical_name": "vitamin B12",
+          "confidence": 1.0,
+          "family": "supplement",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 3,
+      "raw": "B12",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "BPC-157": {
+      "compounds": [
+        {
+          "canonical_name": "BPC-157",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "BPC-157",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "CAGRI SEMA": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        },
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "CAGRI SEMA",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Cagri": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "amylin",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 14,
+      "raw": "Cagri",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Cagrilintide": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "amylin",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Cagrilintide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Cagrisema": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        },
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Cagrisema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "HGH": {
+      "compounds": [
+        {
+          "canonical_name": "human growth hormone",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 3,
+      "raw": "HGH",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "HRT": {
+      "compounds": [
+        {
+          "canonical_name": "hormone replacement therapy",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 5,
+      "raw": "HRT",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Humalog": {
+      "compounds": [
+        {
+          "canonical_name": "insulin",
+          "confidence": 1.0,
+          "family": "diabetes_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Humalog",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "IPA": {
+      "compounds": [
+        {
+          "canonical_name": "ipamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "IPA",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Ipa": {
+      "compounds": [
+        {
+          "canonical_name": "ipamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 10,
+      "raw": "Ipa",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Ipamorelin": {
+      "compounds": [
+        {
+          "canonical_name": "ipamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Ipamorelin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "MJ": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 28,
+      "raw": "MJ",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "MOTS-C": {
+      "compounds": [
+        {
+          "canonical_name": "MOTS-c",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 5,
+      "raw": "MOTS-C",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "MOUNJARO": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "MOUNJARO",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Metformin": {
+      "compounds": [
+        {
+          "canonical_name": "metformin",
+          "confidence": 1.0,
+          "family": "diabetes_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Metformin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Monjaro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Monjaro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Monjauro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Monjauro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Moujaro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Moujaro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Mounjaro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 849,
+      "raw": "Mounjaro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Mounjaro and Zepbound": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Mounjaro and Zepbound",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "NAD+": {
+      "compounds": [
+        {
+          "canonical_name": "NAD+",
+          "confidence": 1.0,
+          "family": "supplement",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 6,
+      "raw": "NAD+",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Ozempic": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 53,
+      "raw": "Ozempic",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Ozempic and Rybelsus": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Ozempic and Rybelsus",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Phentermine": {
+      "compounds": [
+        {
+          "canonical_name": "phentermine",
+          "confidence": 1.0,
+          "family": "stimulant",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Phentermine",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "RETA": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "RETA",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Ret": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 4,
+      "raw": "Ret",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Reta": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 249,
+      "raw": "Reta",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Retatrutide": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 47,
+      "raw": "Retatrutide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Rybelsus": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 6,
+      "raw": "Rybelsus",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "SS-31": {
+      "compounds": [
+        {
+          "canonical_name": "SS-31",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 5,
+      "raw": "SS-31",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Sema": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 88,
+      "raw": "Sema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Semaglutide": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 30,
+      "raw": "Semaglutide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Semaglutide; Sema": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Semaglutide; Sema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "TB500": {
+      "compounds": [
+        {
+          "canonical_name": "TB-500",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "TB500",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "TIRZ": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "TIRZ",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "TIrz": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "TIrz",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "TRT": {
+      "compounds": [
+        {
+          "canonical_name": "testosterone",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 8,
+      "raw": "TRT",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tesa": {
+      "compounds": [
+        {
+          "canonical_name": "tesamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 11,
+      "raw": "Tesa",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tesamorelin": {
+      "compounds": [
+        {
+          "canonical_name": "tesamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Tesamorelin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tirezepatide": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Tirezepatide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tirz": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 258,
+      "raw": "Tirz",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tirz and Reta": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        },
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Tirz and Reta",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tirze": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Tirze",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tirzepatide": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 124,
+      "raw": "Tirzepatide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Tirzepetide": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Tirzepetide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Triz": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Triz",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Trulicity": {
+      "compounds": [
+        {
+          "canonical_name": "Trulicity",
+          "confidence": 1.0,
+          "family": "glp1_other",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 3,
+      "raw": "Trulicity",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Vyvanse": {
+      "compounds": [
+        {
+          "canonical_name": "lisdexamfetamine",
+          "confidence": 1.0,
+          "family": "stimulant",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 7,
+      "raw": "Vyvanse",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Wegovy": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 46,
+      "raw": "Wegovy",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Wegovy; sema": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Wegovy; sema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Wellbutrin": {
+      "compounds": [
+        {
+          "canonical_name": "Wellbutrin",
+          "confidence": 1.0,
+          "family": "other_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Wellbutrin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "ZEPBOUND": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "ZEPBOUND",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Zep": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "Zep",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "ZepBound": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "ZepBound",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Zepbound": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 429,
+      "raw": "Zepbound",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Zepbound and Mounjaro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Zepbound and Mounjaro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Zepbound; tirz": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Zepbound; tirz",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "Zofran": {
+      "compounds": [
+        {
+          "canonical_name": "Zofran",
+          "confidence": 1.0,
+          "family": "other_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "Zofran",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "adderall": {
+      "compounds": [
+        {
+          "canonical_name": "amphetamine/dextroamphetamine",
+          "confidence": 1.0,
+          "family": "stimulant",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "adderall",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "alcohol": {
+      "compounds": [],
+      "count": 2,
+      "raw": "alcohol",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "b12": {
+      "compounds": [
+        {
+          "canonical_name": "vitamin B12",
+          "confidence": 1.0,
+          "family": "supplement",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 5,
+      "raw": "b12",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "cagri": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "amylin",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 19,
+      "raw": "cagri",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "cagri sema": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        },
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "cagri sema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "cagri-sema": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        },
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "unclear",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "cagri-sema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "cagrilintide": {
+      "compounds": [
+        {
+          "canonical_name": "cagrilintide",
+          "confidence": 1.0,
+          "family": "amylin",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 7,
+      "raw": "cagrilintide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "creatine": {
+      "compounds": [
+        {
+          "canonical_name": "creatine",
+          "confidence": 1.0,
+          "family": "supplement",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 3,
+      "raw": "creatine",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "digestive enzymes": {
+      "compounds": [],
+      "count": 2,
+      "raw": "digestive enzymes",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "dulaglutide": {
+      "compounds": [
+        {
+          "canonical_name": "Trulicity",
+          "confidence": 1.0,
+          "family": "glp1_other",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "dulaglutide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "estradiol patch": {
+      "compounds": [
+        {
+          "canonical_name": "estradiol",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "estradiol patch",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "hormone replacement therapy": {
+      "compounds": [
+        {
+          "canonical_name": "hormone replacement therapy",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "hormone replacement therapy",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "hrt": {
+      "compounds": [
+        {
+          "canonical_name": "hormone replacement therapy",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "hrt",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "insulin": {
+      "compounds": [
+        {
+          "canonical_name": "insulin",
+          "confidence": 1.0,
+          "family": "diabetes_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "insulin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "keto": {
+      "compounds": [],
+      "count": 3,
+      "raw": "keto",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "metformin": {
+      "compounds": [
+        {
+          "canonical_name": "metformin",
+          "confidence": 1.0,
+          "family": "diabetes_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 33,
+      "raw": "metformin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "monjauro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "monjauro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "mounjaro": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 175,
+      "raw": "mounjaro",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "multivitamin": {
+      "compounds": [],
+      "count": 3,
+      "raw": "multivitamin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "null": {
+      "compounds": [],
+      "count": 4,
+      "raw": "null",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "ozempic": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 11,
+      "raw": "ozempic",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "phentermine": {
+      "compounds": [
+        {
+          "canonical_name": "phentermine",
+          "confidence": 1.0,
+          "family": "stimulant",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "phentermine",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "probiotic": {
+      "compounds": [],
+      "count": 1,
+      "raw": "probiotic",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "ret": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 5,
+      "raw": "ret",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "reta": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 125,
+      "raw": "reta",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "retatrutide": {
+      "compounds": [
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 56,
+      "raw": "retatrutide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "rybelsus": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "rybelsus",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "sema": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 106,
+      "raw": "sema",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "semaglutide": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 45,
+      "raw": "semaglutide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "sermorelin": {
+      "compounds": [
+        {
+          "canonical_name": "sermorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "sermorelin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tesa": {
+      "compounds": [
+        {
+          "canonical_name": "tesamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "tesa",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tesamorelin": {
+      "compounds": [
+        {
+          "canonical_name": "tesamorelin",
+          "confidence": 1.0,
+          "family": "peptide",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "tesamorelin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "testosterone": {
+      "compounds": [
+        {
+          "canonical_name": "testosterone",
+          "confidence": 1.0,
+          "family": "hormone",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 2,
+      "raw": "testosterone",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "thyroid medication": {
+      "compounds": [],
+      "count": 7,
+      "raw": "thyroid medication",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tirz": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 298,
+      "raw": "tirz",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tirze": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 3,
+      "raw": "tirze",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tirzepatide": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 221,
+      "raw": "tirzepatide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tirzepatide and retatrutide": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        },
+        {
+          "canonical_name": "retatrutide",
+          "confidence": 1.0,
+          "family": "reta",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "tirzepatide and retatrutide",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tirzepatide/B12": {
+      "compounds": [
+        {
+          "canonical_name": "vitamin B12",
+          "confidence": 1.0,
+          "family": "supplement",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "tirzepatide/B12",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "tirzepatide/b12": {
+      "compounds": [
+        {
+          "canonical_name": "vitamin B12",
+          "confidence": 1.0,
+          "family": "supplement",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "tirzepatide/b12",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "triz": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 5,
+      "raw": "triz",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "type 2 diabetes medication": {
+      "compounds": [],
+      "count": 6,
+      "raw": "type 2 diabetes medication",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "vlcd": {
+      "compounds": [],
+      "count": 1,
+      "raw": "vlcd",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "wegovy": {
+      "compounds": [
+        {
+          "canonical_name": "semaglutide",
+          "confidence": 1.0,
+          "family": "sema",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 8,
+      "raw": "wegovy",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "wellbutrin": {
+      "compounds": [
+        {
+          "canonical_name": "Wellbutrin",
+          "confidence": 1.0,
+          "family": "other_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "wellbutrin",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "women's probiotic": {
+      "compounds": [],
+      "count": 1,
+      "raw": "women's probiotic",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "zep": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "zep",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "zepbound": {
+      "compounds": [
+        {
+          "canonical_name": "tirzepatide",
+          "confidence": 1.0,
+          "family": "tirz",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 46,
+      "raw": "zepbound",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    },
+    "zofran": {
+      "compounds": [
+        {
+          "canonical_name": "Zofran",
+          "confidence": 1.0,
+          "family": "other_drug",
+          "note": "explicit alias map",
+          "source": "alias"
+        }
+      ],
+      "count": 1,
+      "raw": "zofran",
+      "source": "alias",
+      "updated_at": "2026-07-02T08:02:01+00:00"
+    }
+  },
+  "model": "gpt-5.4-nano",
+  "prompt": "prompts/normalize_compounds.md",
+  "prompt_cache_key": "glp1-compounds-gpt-5-4-nano-e54e785fe7b0",
+  "stats": {
+    "alias_normalized": 109,
+    "openai_normalized": 0,
+    "raw_names": 712,
+    "unresolved_remaining": 613
+  },
+  "usage": [],
+  "version": "2026-07-02-v1"
+}

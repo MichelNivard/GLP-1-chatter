@@ -197,7 +197,15 @@ dd {
   align-items: start;
 }
 
+.network-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 1rem;
+  align-items: start;
+}
+
 .plot-area,
+.network-area,
 .detail-panel,
 .effects-layout > div,
 .table-section {
@@ -212,10 +220,21 @@ dd {
   padding: 0.75rem;
 }
 
+.network-area {
+  min-height: 680px;
+  padding: 0.75rem;
+}
+
 .scatterplot {
   display: block;
   width: 100%;
   min-height: 520px;
+}
+
+.compound-network {
+  display: block;
+  width: 100%;
+  min-height: 650px;
 }
 
 .status {
@@ -240,6 +259,15 @@ dd {
   border-radius: 6px;
   padding: 0.75rem;
   font-size: 0.85rem;
+}
+
+.detail-list.compact {
+  gap: 0.35rem;
+  font-size: 0.88rem;
+}
+
+.detail-list.compact div {
+  grid-template-columns: minmax(96px, 0.42fr) 1fr;
 }
 
 .reddit-link {
@@ -318,6 +346,161 @@ dd {
   stroke-width: 3;
 }
 
+.network-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.segmented {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.55rem 0.75rem;
+}
+
+.segmented:hover,
+.segmented.active {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.network-edge {
+  fill: none;
+  stroke: rgba(80, 92, 105, 0.34);
+  stroke-linecap: round;
+  cursor: pointer;
+}
+
+.network-edge:hover,
+.network-edge:focus {
+  stroke: rgba(31, 36, 40, 0.76);
+  outline: none;
+}
+
+.network-node {
+  cursor: pointer;
+}
+
+.network-node circle,
+.network-legend circle {
+  stroke: #fff;
+  stroke-width: 1.5;
+  fill: #8b949e;
+}
+
+.network-node:hover circle,
+.network-node:focus circle {
+  stroke: var(--ink);
+  stroke-width: 2;
+  outline: none;
+}
+
+.network-node text,
+.network-legend text {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.compound-family-reta circle,
+.compound-family-reta {
+  fill: var(--green);
+}
+
+.compound-family-tirz circle,
+.compound-family-tirz {
+  fill: var(--blue);
+}
+
+.compound-family-sema circle,
+.compound-family-sema {
+  fill: var(--orange);
+}
+
+.compound-family-amylin circle,
+.compound-family-amylin {
+  fill: #8a63b8;
+}
+
+.compound-family-glp1_other circle,
+.compound-family-glp1_other {
+  fill: #5b8f9a;
+}
+
+.compound-family-stimulant circle,
+.compound-family-stimulant {
+  fill: #c94c78;
+}
+
+.compound-family-diabetes_drug circle,
+.compound-family-diabetes_drug {
+  fill: #7b8c31;
+}
+
+.compound-family-hormone circle,
+.compound-family-hormone {
+  fill: #b56a2c;
+}
+
+.compound-family-peptide circle,
+.compound-family-peptide {
+  fill: #6f77c8;
+}
+
+.compound-family-supplement circle,
+.compound-family-supplement {
+  fill: #4d9270;
+}
+
+.compound-family-other_drug circle,
+.compound-family-other_drug {
+  fill: #8b6f58;
+}
+
+.network-detail h3 {
+  margin-top: 1rem;
+}
+
+.report-mini {
+  border-top: 1px solid var(--line);
+  padding: 0.85rem 0;
+}
+
+.report-mini h3 {
+  color: var(--ink);
+  font-size: 0.96rem;
+  margin-bottom: 0.35rem;
+}
+
+.report-mini p {
+  margin-bottom: 0.65rem;
+}
+
+.excerpt {
+  background: #f4f6f8;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 0.84rem;
+  padding: 0.65rem;
+}
+
+.audit-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  gap: 1rem;
+}
+
 .effects-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
@@ -387,6 +570,8 @@ th {
 @media (max-width: 940px) {
   .summary-grid,
   .plot-layout,
+  .network-layout,
+  .audit-grid,
   .effects-layout {
     grid-template-columns: 1fr;
   }
