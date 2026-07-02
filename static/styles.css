@@ -648,6 +648,7 @@ p {
 
 .mini-chart {
   display: block;
+  color-scheme: light;
   height: 205px;
   margin: 0.9rem 0;
   border: 1px solid var(--line);
@@ -666,7 +667,7 @@ p {
 }
 
 .mini-panel {
-  fill: var(--chart-paper);
+  fill: var(--chart-paper) !important;
 }
 
 .mini-grid {
@@ -969,6 +970,7 @@ dd {
 
 .scatterplot {
   display: block;
+  color-scheme: light;
   width: 100%;
   min-height: 520px;
 }
@@ -1093,7 +1095,7 @@ dd {
 }
 
 .plot-bg {
-  fill: var(--chart-paper);
+  fill: var(--chart-paper) !important;
 }
 
 .grid {

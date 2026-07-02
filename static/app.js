@@ -228,7 +228,7 @@ function renderScatter(data) {
   clipPath.appendChild(el("rect", { x: margin.left, y: margin.top, width: plotW, height: plotH }));
   defs.appendChild(clipPath);
   svg.appendChild(defs);
-  svg.appendChild(el("rect", { x: margin.left, y: margin.top, width: plotW, height: plotH, class: "plot-bg" }));
+  svg.appendChild(el("rect", { x: margin.left, y: margin.top, width: plotW, height: plotH, class: "plot-bg", fill: "#f3f2ec" }));
 
   yTickValues.forEach((value) => {
     const y = yScale(value);

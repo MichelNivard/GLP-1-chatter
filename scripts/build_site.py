@@ -43,6 +43,7 @@ SOCIAL_DESCRIPTION = (
     "retatrutide, side effects, weight change, and stacking."
 )
 SOCIAL_IMAGE_PATH = "assets/social-preview.png"
+ASSET_VERSION = (os.environ.get("ASSET_VERSION") or os.environ.get("GITHUB_SHA") or "local")[:12]
 
 MAX_PLOTTED_WEIGHT_GAIN_KG = 10.0
 
@@ -136,6 +137,15 @@ def fmt_number(value: float | None, digits: int = 1) -> str:
 def nav_link(label: str, href: str, key: str, active: str) -> str:
     class_attr = ' class="active"' if key == active else ""
     return f'<a href="{html.escape(href)}"{class_attr}>{html.escape(label)}</a>'
+
+
+def asset_href(asset_prefix: str, filename: str) -> str:
+    version = html.escape(ASSET_VERSION, quote=True)
+    return f"{asset_prefix}assets/{filename}?v={version}"
+
+
+def app_script(asset_prefix: str = "") -> str:
+    return f'<script src="{asset_href(asset_prefix, "app.js")}"></script>'
 
 
 def site_header(asset_prefix: str = "", active: str = "overview", *, show_brand: bool = True) -> str:
@@ -347,14 +357,14 @@ def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
         )
         curve_path = f'<path class="mini-fit" d="{path}" />'
     return f"""
-        <svg class="mini-chart mini-plot" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(name)} weight-change mini plot">
+        <svg class="mini-chart mini-plot" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(name)} weight-change mini plot" style="background:#f3f2ec;color-scheme:light">
           <title>{html.escape(name)} Reddit reports: duration by weight change</title>
           <defs>
             <clipPath id="{clip_id}">
               <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" />
             </clipPath>
           </defs>
-          <rect class="mini-panel" x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" />
+          <rect class="mini-panel" x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" fill="#f3f2ec" />
           {y_grid_nodes}
           <line class="mini-zero" x1="{left}" y1="{zero_y:.2f}" x2="{width - right}" y2="{zero_y:.2f}" />
           <line class="mini-axis" x1="{left}" y1="{height - bottom}" x2="{width - right}" y2="{height - bottom}" />
@@ -1113,7 +1123,7 @@ def html_page(
   <meta name="twitter:description" content="{html.escape(description)}">
   <meta name="twitter:image" content="{html.escape(image_url)}">
   <meta name="twitter:image:alt" content="GLP-1 Chatter, Reddit user reports about weight-loss drugs and medical consumerism.">
-  <link rel="stylesheet" href="{asset_prefix}assets/styles.css">
+  <link rel="stylesheet" href="{asset_href(asset_prefix, "styles.css")}">
 </head>
 {body}
 </html>
@@ -1424,7 +1434,7 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
       {rct_note}
     </section>
   </main>
-  <script src="../assets/app.js"></script>
+  {app_script("../")}
 </body>
 """
     return html_page(f"{name} Weight Change", body, asset_prefix="../", page_path=f"{family}/")
@@ -1484,7 +1494,7 @@ def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, 
       <div id="effect-feed-sentinel" class="feed-sentinel"></div>
     </section>
   </main>
-  <script src="../assets/app.js"></script>
+  {app_script("../")}
 </body>
 """
     return html_page(f"{name} Side Effects", body, asset_prefix="../", page_path=f"{family}/side-effects.html")
@@ -1540,7 +1550,7 @@ def render_concurrent_page(generated_at: str, summary: dict[str, Any]) -> str:
       <div id="normalization-audit" class="audit-grid"></div>
     </section>
   </main>
-  <script src="../assets/app.js"></script>
+  {app_script("../")}
 </body>
 """
     return html_page("Stacking/polypharmacy", body, asset_prefix="../", page_path="concurrent/")
