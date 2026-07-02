@@ -78,15 +78,22 @@ def nav_link(label: str, href: str, key: str, active: str) -> str:
     return f'<a href="{html.escape(href)}"{class_attr}>{html.escape(label)}</a>'
 
 
-def site_header(asset_prefix: str = "", active: str = "overview") -> str:
+def site_header(asset_prefix: str = "", active: str = "overview", *, show_brand: bool = True) -> str:
     home = asset_prefix or "./"
-    return f"""
-  <header class="site-header">
-    <div class="header-inner">
+    brand = (
+        f"""
       <a href="{html.escape(home)}" class="brand">
         <strong>GLP-1 Reports Observatory</strong>
         <span>Reddit user reports with caveated extraction and review</span>
-      </a>
+      </a>"""
+        if show_brand
+        else ""
+    )
+    header_class = "header-inner" if show_brand else "header-inner header-inner-nav-only"
+    return f"""
+  <header class="site-header">
+    <div class="{header_class}">
+      {brand}
       <nav class="nav" aria-label="Primary">
         {nav_link("Overview", home, "overview", active)}
         {nav_link("Weight Change", f"{home}weight-change/", "weight", active)}
@@ -911,17 +918,21 @@ def html_page(title: str, body: str, asset_prefix: str = "") -> str:
 def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dict[str, dict[str, Any]]) -> str:
     snapshot_notes = {
         "sema": (
-            "Semaglutide was the original GLP-1 wave that made pharmacological weight loss "
-            "feel suddenly visible at mass scale, with Wegovy and Ozempic reshaping the early 2020s."
+            "Drug marketed as Ozempic, Wegovy, and Rybelsus, semaglutide was the GLP-1 drug "
+            "that first made this new weight-loss era visible at mass scale, with Ozempic becoming "
+            "a cultural and economic phenomenon in the early 2020s. The impact was such that "
+            "Novo Nordisk became a large part of the Danish economic story, only to be quickly "
+            "challenged by Eli Lilly."
         ),
         "tirz": (
-            "Tirzepatide followed with dual GIP/GLP-1 activity and became the reference point "
-            "for users switching, escalating, or searching for stronger appetite effects."
+            "Marketed as Mounjaro and Zepbound, tirzepatide turned the second wave into a rivalry: "
+            "a dual GIP/GLP-1 drug from Eli Lilly that many Reddit users discuss as the stronger, "
+            "more expensive, harder-to-access benchmark for appetite suppression and weight loss."
         ),
         "reta": (
-            "Retatrutide is not approved as a weight-loss drug, but appears in higher-risk-tolerance "
-            "communities unwilling to wait for formal approval and hoping for faster loss while "
-            "preserving muscle."
+            "Retatrutide is not approved as a weight-loss drug. On Reddit it appears as a frontier "
+            "compound for higher-risk-tolerance communities: people unwilling to wait for regulators "
+            "and hoping for faster loss, more metabolic force, and less muscle sacrifice."
         ),
     }
     snapshot_eras = {
@@ -936,7 +947,6 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
         <aside class="story-snapshot story-snapshot-{align} family-{family}" aria-label="{html.escape(FAMILY_NAMES[family])} snapshot">
           <div class="snapshot-kicker">Figure {index}<span>{html.escape(snapshot_eras[family])}</span></div>
           <h2>{html.escape(FAMILY_NAMES[family])}</h2>
-          <p class="aliases">{html.escape(FAMILY_COPY[family]["aliases"])}</p>
           <p class="snapshot-note">{html.escape(snapshot_notes[family])}</p>
           {render_home_mini_plot(family, family_payloads[family])}
           <div class="metrics compact-metrics">
@@ -951,11 +961,10 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
 
     body = f"""
 <body>
-  {site_header(active="overview")}
+  {site_header(active="overview", show_brand=False)}
   <main class="home">
     <article class="home-essay">
       <header class="essay-header">
-        <p class="eyebrow">Drug Comparison Observatory</p>
         <h1>GLP-1 Chatter</h1>
         <p class="essay-deck">Reddit, weight-loss drugs, and the new medical consumerism.</p>
       </header>

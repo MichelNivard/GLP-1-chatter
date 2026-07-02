@@ -51,6 +51,15 @@ a {
   padding: 0 1.25rem;
 }
 
+.header-inner-nav-only {
+  grid-template-columns: 1fr;
+  min-height: 58px;
+}
+
+.header-inner-nav-only .nav {
+  justify-content: center;
+}
+
 .nav {
   display: flex;
   align-items: center;
@@ -238,8 +247,14 @@ p {
 }
 
 .story-snapshot-left {
+  clear: both;
   float: left;
-  margin-right: 1.45rem;
+  margin: 2.35rem 1.45rem 1.25rem 0;
+}
+
+.story-snapshot.family-reta {
+  clear: both;
+  margin-top: 2.35rem;
 }
 
 .story-snapshot h2 {
