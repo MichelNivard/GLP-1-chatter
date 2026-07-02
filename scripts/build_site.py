@@ -62,6 +62,48 @@ FAMILY_COPY = {
     },
 }
 
+SIDE_EFFECT_MILD_QUOTES = {
+    "sema": {
+        "effect": "slight nausea",
+        "quote": "I took my first dose yesterday ... I&rsquo;ve had some slight nausea already ... I&rsquo;m starting at 201 lbs",
+        "source": "Mild LLM example, slight nausea, r/Semaglutide",
+        "url": "https://www.reddit.com/r/Semaglutide/comments/1kd3orm/first_dose_yesterday_second_go_at_glp1/",
+    },
+    "tirz": {
+        "effect": "mild headache",
+        "quote": "So yesterday I took my first dose of 2.5mg ... side-effects I would just say I had a mild headache",
+        "source": "Mild LLM example, mild headache, r/Mounjaro",
+        "url": "https://www.reddit.com/r/Mounjaro/comments/1fqjmkl/started_my_journey_yesterday/",
+    },
+    "reta": {
+        "effect": "minor fatigue and constipation",
+        "quote": "I&rsquo;m just finishing up my first cycle with Retatrutide ... achieved my target weight with only minor side effects (minor fatigue and some constipation)",
+        "source": "Mild LLM example, minor fatigue and constipation, r/Retatrutide",
+        "url": "https://www.reddit.com/r/Retatrutide/comments/1kne6hn/ramp_down_question/",
+    },
+}
+
+SIDE_EFFECT_SEVERE_QUOTES = {
+    "sema": {
+        "effect": "uncontrollable vomiting",
+        "quote": "I&rsquo;m exactly one month into semaglutide ... about 48 hours after my shot I get violently ill ... uncontrollably vomiting for hours on end ... can&rsquo;t keep even water down",
+        "source": "Severe LLM example, uncontrollable vomiting, r/Semaglutide",
+        "url": "https://www.reddit.com/r/Semaglutide/comments/1knbukl/sema_warriors_please_help/",
+    },
+    "tirz": {
+        "effect": "severe nausea and vomiting",
+        "quote": "give up on Mounjaro due to severe nausea and vomiting for 36 hours which starts 24 hours after dose",
+        "source": "Severe LLM example, severe nausea and vomiting, r/Mounjaro",
+        "url": "https://www.reddit.com/r/Mounjaro/comments/1kq7cfy/to_those_who_believe_in_injection_site_difference/mt42t1a/",
+    },
+    "reta": {
+        "effect": "severe stomach pains",
+        "quote": "Been on Retatrutide for about 8 weeks at 2mg/wk and last night developed severe stomach pains ... CT scan showed severe enteritis",
+        "source": "Severe LLM example, severe stomach pains, r/Retatrutide",
+        "url": "https://www.reddit.com/r/Retatrutide/comments/1kfgr6i/reta_contribute_to_severe_enteritis/",
+    },
+}
+
 WEIGHT_PAGE_COPY = {
     "reta": [
         (
@@ -708,47 +750,21 @@ def clipped_quote(value: str | None, limit: int = 185) -> str:
     return f"{clipped}..."
 
 
-def side_effect_severity_examples(explorer: dict[str, Any]) -> dict[str, dict[str, str]]:
-    examples: dict[str, dict[str, str]] = {}
-    reports = explorer.get("reports", {})
-    for report in reports.values():
-        for effect, severity_info in (report.get("severity_by_effect") or {}).items():
-            severity = severity_info.get("severity")
-            if severity not in {"mild", "severe"} or severity in examples:
-                continue
-            quote = clipped_quote(report.get("evidence")) or clipped_quote(report.get("text_excerpt"))
-            if not quote:
-                continue
-            examples[severity] = {
-                "effect": str(effect),
-                "quote": quote,
-                "url": str(report.get("url") or "#"),
-                "subreddit": str(report.get("subreddit") or "unknown"),
-            }
-        if {"mild", "severe"}.issubset(examples):
-            break
-    return examples
-
-
-def side_effect_examples_html(explorer: dict[str, Any]) -> str:
-    examples = side_effect_severity_examples(explorer)
-    cards = []
-    for severity in ("mild", "severe"):
-        example = examples.get(severity)
-        if not example:
-            continue
-        cards.append(
-            f"""
-        <figure class="severity-example severity-example-{severity}">
-          <figcaption>{severity.capitalize()} LLM example - {html.escape(example["effect"])} - r/{html.escape(example["subreddit"])}</figcaption>
-          <blockquote>{html.escape(example["quote"])}</blockquote>
-          <a class="reddit-link" href="{html.escape(example["url"])}" target="_blank" rel="noopener">Open Reddit URL</a>
-        </figure>
-"""
-        )
-    if not cards:
+def side_effect_examples_html(family: str) -> str:
+    mild = SIDE_EFFECT_MILD_QUOTES.get(family)
+    severe = SIDE_EFFECT_SEVERE_QUOTES.get(family)
+    if not mild or not severe:
         return ""
-    return f'      <div class="severity-examples">{"".join(cards)}      </div>'
+    return (
+        "The spread is part of the point. A mild label can mean a short, manageable nuisance, "
+        f'<q class="home-story-quote">{mild["quote"]}</q> '
+        f'<span class="home-story-source">{html.escape(mild["source"])} · '
+        f'<a href="{html.escape(mild["url"])}" target="_blank" rel="noopener">source</a></span>, '
+        "while another nearby report can sound much more frightening, "
+        f'<q class="home-story-quote home-story-quote-vulnerable">{severe["quote"]}</q> '
+        f'<span class="home-story-source">{html.escape(severe["source"])} · '
+        f'<a href="{html.escape(severe["url"])}" target="_blank" rel="noopener">source</a></span>.'
+    )
 
 
 def side_effect_explorer_payload(
@@ -1442,7 +1458,7 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
 
 def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, Any]) -> str:
     name = FAMILY_NAMES[family]
-    examples_html = side_effect_examples_html(explorer)
+    examples_html = side_effect_examples_html(family)
     body = f"""
 <body data-view="side-effects" data-family="{family}" data-json="../data/{family}.json">
   {site_header("../", active="effects")}
@@ -1452,8 +1468,7 @@ def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, 
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Side-effects</h1>
       <div class="page-copy side-effect-page-copy">
-{examples_html}
-        <p>These medications are certainly not without side effects. As with the weight-loss plots, GLP-1 Chatter starts by selecting Reddit posts and comments that mention the relevant drug family, then reads them one by one to pull out the symptoms people say they experienced. A second one-report screen gives each extracted phrase a reader-facing severity label: mild, moderate, or severe. The point is not to diagnose anyone. It is to make a sprawling archive easier to navigate without separating the count from the story that produced it.</p>
+        <p>These medications are certainly not without side effects. As with the weight-loss plots, GLP-1 Chatter starts by selecting Reddit posts and comments that mention the relevant drug family, then reads them one by one to pull out the symptoms people say they experienced. {examples_html} A second one-report screen gives each extracted phrase a reader-facing severity label: mild, moderate, or severe. The point is not to diagnose anyone. It is to make a sprawling archive easier to navigate without separating the count from the story that produced it.</p>
         <p>The labels are not clinical adverse-event grades. They are a way of reading a noisy public archive: mild when the report sounds limited or manageable, moderate when it becomes disruptive or persistent, and severe when the text points to danger, drug stopping, urgent care, inability to keep food or fluids down, or major impairment. "Unscreened" means the report has not yet received that severity pass.</p>
         <p>Use the frequency list to choose a specific side effect, the co-occurrence view to see symptoms that travel together, and the severity buttons to narrow the archive to mild, moderate, or severe accounts. The report cards below then let you browse the source posts and full Reddit text, preserving the lived context people chose to share: excitement, fear, reassurance, practical advice, and sometimes vulnerability in a place that may or may not give them reliable support.</p>
       </div>
