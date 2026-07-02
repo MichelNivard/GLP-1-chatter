@@ -1105,6 +1105,10 @@ def absolute_site_url(path: str = "") -> str:
     return f"{SITE_URL}/"
 
 
+def versioned_site_asset_url(path: str) -> str:
+    return f"{absolute_site_url(path)}?v={html.escape(ASSET_VERSION, quote=True)}"
+
+
 def html_page(
     title: str,
     body: str,
@@ -1114,7 +1118,7 @@ def html_page(
 ) -> str:
     page_title = title if title == SOCIAL_TITLE else f"{title} | {SOCIAL_TITLE}"
     canonical_url = absolute_site_url(page_path)
-    image_url = absolute_site_url(SOCIAL_IMAGE_PATH)
+    image_url = versioned_site_asset_url(SOCIAL_IMAGE_PATH)
     return f"""<!doctype html>
 <html lang="en">
 <head>
