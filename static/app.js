@@ -190,39 +190,292 @@ function renderScatter(data) {
 }
 
 function renderSideEffects(data) {
-  const effects = data.side_effects || [];
-  const bars = document.getElementById("effect-bars");
+  const explorer = data.side_effect_explorer || {};
+  const effects = explorer.effects || data.side_effects || [];
+  const reports = explorer.reports || {};
   const cloud = document.getElementById("effect-cloud");
+  const network = document.getElementById("effect-network");
+  const detail = document.getElementById("effect-detail");
+  const feed = document.getElementById("effect-feed");
+  const feedCount = document.getElementById("effect-feed-count");
+  const sentinel = document.getElementById("effect-feed-sentinel");
   const table = document.getElementById("effect-table");
-  bars.innerHTML = "";
-  cloud.innerHTML = "";
+  const status = document.getElementById("effect-status");
+  const search = document.getElementById("effect-search");
+  let selectedEffect = effects[0]?.phrase || null;
+  let selectedSeverity = "all";
+  let query = "";
+  let visibleReports = 18;
+  let observer = null;
+
+  function reportForId(id) {
+    return reports[String(id)] || reports[id];
+  }
+
+  function severityFor(report, effect) {
+    return report?.severity_by_effect?.[effect]?.severity || "unscreened";
+  }
+
+  function severitySourceFor(report, effect) {
+    return report?.severity_by_effect?.[effect]?.source || "not_llm_screened";
+  }
+
+  function selectedReports() {
+    if (!selectedEffect) return [];
+    const effect = effects.find((item) => item.phrase === selectedEffect);
+    const q = query.trim().toLowerCase();
+    return (effect?.report_ids || [])
+      .map(reportForId)
+      .filter(Boolean)
+      .filter((report) => selectedSeverity === "all" || severityFor(report, selectedEffect) === selectedSeverity)
+      .filter((report) => {
+        if (!q) return true;
+        const haystack = [
+          report.subreddit,
+          report.drug_name_mentioned,
+          report.evidence,
+          report.notes,
+          report.text_excerpt,
+          report.full_text,
+          ...(report.effects || []),
+        ].join(" ").toLowerCase();
+        return haystack.includes(q);
+      })
+      .sort((a, b) => String(b.created_iso || "").localeCompare(String(a.created_iso || "")));
+  }
+
+  function severityBadge(severity) {
+    return `<span class="severity-badge severity-${htmlEscape(severity)}">${htmlEscape(severity)}</span>`;
+  }
+
+  function renderCloud() {
+    cloud.innerHTML = "";
+    if (!effects.length) return;
+    const max = Math.max(...effects.map((item) => item.count));
+    effects.slice(0, 80).forEach((item) => {
+      const token = document.createElement("button");
+      token.type = "button";
+      token.className = `effect-token${item.phrase === selectedEffect ? " active" : ""}`;
+      token.style.fontSize = `${0.9 + (item.count / max) * 1.85}rem`;
+      token.innerHTML = `<span>${htmlEscape(item.phrase)}</span><strong>${item.count}</strong>`;
+      token.addEventListener("click", () => {
+        selectedEffect = item.phrase;
+        visibleReports = 18;
+        renderAll();
+      });
+      cloud.appendChild(token);
+    });
+  }
+
+  function renderEffectNetwork() {
+    network.innerHTML = "";
+    if (!selectedEffect) {
+      network.setAttribute("viewBox", "0 0 760 520");
+      return;
+    }
+    const width = 760;
+    const height = 540;
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = 196;
+    network.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    const links = (explorer.links || [])
+      .filter((link) => link.source === selectedEffect || link.target === selectedEffect)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 18);
+    const maxCount = Math.max(1, ...links.map((link) => Number(link.count || 0)));
+    const center = el("g", { class: "effect-node effect-node-center", tabindex: 0 });
+    center.appendChild(el("circle", { cx, cy, r: 52 }));
+    center.appendChild(el("text", { x: cx, y: cy - 5, "text-anchor": "middle" }, selectedEffect));
+    center.appendChild(el("text", { x: cx, y: cy + 17, "text-anchor": "middle", class: "effect-node-count" }, `${selectedReports().length} reports`));
+    network.appendChild(center);
+
+    links.forEach((link, index) => {
+      const other = link.source === selectedEffect ? link.target : link.source;
+      const angle = -Math.PI / 2 + (index / Math.max(1, links.length)) * Math.PI * 2;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      const edge = el("line", {
+        x1: cx,
+        y1: cy,
+        x2: x,
+        y2: y,
+        class: "effect-edge",
+        "stroke-width": (1.5 + Math.sqrt(link.count / maxCount) * 9).toFixed(2),
+      });
+      edge.appendChild(el("title", {}, `${selectedEffect} + ${other}: ${link.count} reports`));
+      network.insertBefore(edge, center);
+
+      const group = el("g", { class: "effect-node", tabindex: 0 });
+      group.appendChild(el("circle", { cx: x.toFixed(2), cy: y.toFixed(2), r: (16 + Math.sqrt(link.count / maxCount) * 15).toFixed(2) }));
+      group.appendChild(el("text", { x: x.toFixed(2), y: (y + 4).toFixed(2), "text-anchor": "middle" }, other));
+      group.appendChild(el("title", {}, `${other}: ${link.count} co-mentions`));
+      group.addEventListener("click", () => {
+        selectedEffect = other;
+        visibleReports = 18;
+        renderAll();
+      });
+      group.addEventListener("focus", () => {
+        selectedEffect = other;
+        visibleReports = 18;
+        renderAll();
+      });
+      network.appendChild(group);
+    });
+  }
+
+  function renderDetailPanel(filteredReports) {
+    const effect = effects.find((item) => item.phrase === selectedEffect);
+    if (!effect) {
+      detail.innerHTML = "<h2>Effect detail</h2><p>No side effects extracted yet.</p>";
+      return;
+    }
+    const counts = effect.severity_counts || {};
+    const topPartners = (explorer.links || [])
+      .filter((link) => link.source === selectedEffect || link.target === selectedEffect)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6)
+      .map((link) => `${link.source === selectedEffect ? link.target : link.source} (${link.count})`)
+      .join("; ") || "none";
+    detail.innerHTML = `
+      <h2>${htmlEscape(selectedEffect)}</h2>
+      <dl class="detail-list">
+        <div><dt>Total reports</dt><dd>${effect.count}</dd></div>
+        <div><dt>Visible reports</dt><dd>${filteredReports.length}</dd></div>
+        <div><dt>Mild</dt><dd>${counts.mild || 0}</dd></div>
+        <div><dt>Moderate</dt><dd>${counts.moderate || 0}</dd></div>
+        <div><dt>Severe</dt><dd>${counts.severe || 0}</dd></div>
+        <div><dt>Unscreened</dt><dd>${counts.unscreened || 0}</dd></div>
+        <div><dt>Common co-mentions</dt><dd>${htmlEscape(topPartners)}</dd></div>
+      </dl>
+      <p class="note">Severity is a prototype keyword label until a one-item follow-up LLM screen is added.</p>
+    `;
+  }
+
+  function reportCard(report) {
+    const severity = severityFor(report, selectedEffect);
+    const effectsHtml = (report.effects || [])
+      .map((effect) => `<button type="button" class="effect-chip${effect === selectedEffect ? " active" : ""}" data-effect="${htmlEscape(effect)}">${htmlEscape(effect)}</button>`)
+      .join("");
+    return `
+      <article class="effect-report-card">
+        <div class="report-topline">
+          <h3>${htmlEscape(report.created_iso || "unknown date")} · r/${htmlEscape(report.subreddit || "unknown")}</h3>
+          ${severityBadge(severity)}
+        </div>
+        <p><strong>${htmlEscape(report.drug_name_mentioned || report.drug_family || "unknown drug")}</strong> ${htmlEscape(report.dose_strong || "")}</p>
+        <div class="effect-chip-row">${effectsHtml}</div>
+        <dl class="detail-list compact">
+          <div><dt>Severity source</dt><dd>${htmlEscape(severitySourceFor(report, selectedEffect))}</dd></div>
+          <div><dt>Attribution</dt><dd>${htmlEscape(report.attribution || "n/a")}</dd></div>
+          <div><dt>Evidence</dt><dd>${htmlEscape(report.evidence || "n/a")}</dd></div>
+          <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
+        </dl>
+        <p class="excerpt">${htmlEscape(report.text_excerpt || "")}</p>
+        <details>
+          <summary>Original Reddit text</summary>
+          <pre>${htmlEscape(report.full_text || "")}</pre>
+        </details>
+        <a class="reddit-link" href="${htmlEscape(report.url || "#")}" target="_blank" rel="noopener">Open Reddit URL</a>
+      </article>
+    `;
+  }
+
+  function bindReportChips() {
+    feed.querySelectorAll("[data-effect]").forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedEffect = button.dataset.effect;
+        visibleReports = 18;
+        renderAll();
+      });
+    });
+  }
+
+  function renderFeed(filteredReports) {
+    feedCount.textContent = selectedEffect ? `${filteredReports.length} matching reports for "${selectedEffect}"` : "";
+    const visible = filteredReports.slice(0, visibleReports);
+    feed.innerHTML = visible.map(reportCard).join("") || '<p class="status">No reports match the current filters.</p>';
+    bindReportChips();
+    sentinel.hidden = visibleReports >= filteredReports.length;
+    if (!sentinel.hidden) {
+      sentinel.textContent = "Loading more reports...";
+    } else {
+      sentinel.textContent = "";
+    }
+  }
+
+  function renderTable() {
+    table.innerHTML = "";
+    effects.forEach((item) => {
+      const counts = item.severity_counts || {};
+      const tr = document.createElement("tr");
+      tr.className = item.phrase === selectedEffect ? "selected-row" : "";
+      tr.innerHTML = `
+        <td><button type="button" class="table-link">${htmlEscape(item.phrase)}</button></td>
+        <td>${item.count}</td>
+        <td>${counts.mild || 0}</td>
+        <td>${counts.moderate || 0}</td>
+        <td>${counts.severe || 0}</td>
+        <td>${counts.unscreened || 0}</td>
+      `;
+      tr.querySelector("button").addEventListener("click", () => {
+        selectedEffect = item.phrase;
+        visibleReports = 18;
+        renderAll();
+      });
+      table.appendChild(tr);
+    });
+  }
+
+  function renderAll() {
+    if (!effects.length) {
+      status.textContent = "No side effects extracted yet.";
+      cloud.innerHTML = "";
+      network.innerHTML = "";
+      table.innerHTML = "";
+      feed.innerHTML = "";
+      detail.innerHTML = "<h2>Effect detail</h2>";
+      return;
+    }
+    const filteredReports = selectedReports();
+    status.textContent = `${explorer.summary?.reports_with_side_effects || Object.keys(reports).length} reports with side-effect mentions, ${effects.length} normalized phrases.`;
+    renderCloud();
+    renderEffectNetwork();
+    renderDetailPanel(filteredReports);
+    renderFeed(filteredReports);
+    renderTable();
+  }
+
+  search?.addEventListener("input", () => {
+    query = search.value || "";
+    visibleReports = 18;
+    renderAll();
+  });
+  document.querySelectorAll("[data-severity]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedSeverity = button.dataset.severity || "all";
+      document.querySelectorAll("[data-severity]").forEach((item) => item.classList.toggle("active", item === button));
+      visibleReports = 18;
+      renderAll();
+    });
+  });
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    const filteredReports = selectedReports();
+    if (visibleReports < filteredReports.length) {
+      visibleReports += 12;
+      renderFeed(filteredReports);
+    }
+  }, { rootMargin: "500px" });
+  if (sentinel) observer.observe(sentinel);
+
   table.innerHTML = "";
   if (!effects.length) {
-    bars.innerHTML = '<p class="status">No side effects extracted yet.</p>';
+    status.textContent = "No side effects extracted yet.";
     return;
   }
-  const max = Math.max(...effects.map((item) => item.count));
-  effects.slice(0, 25).forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "bar-row";
-    row.innerHTML = `
-      <span>${htmlEscape(item.phrase)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(5, item.count / max * 100)}%"></div></div>
-      <strong>${item.count}</strong>
-    `;
-    bars.appendChild(row);
-  });
-  effects.slice(0, 60).forEach((item) => {
-    const token = document.createElement("span");
-    token.style.fontSize = `${0.85 + (item.count / max) * 1.65}rem`;
-    token.textContent = item.phrase;
-    cloud.appendChild(token);
-  });
-  effects.forEach((item) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${htmlEscape(item.phrase)}</td><td>${item.count}</td>`;
-    table.appendChild(tr);
-  });
+  renderAll();
 }
 
 function networkFamilyClass(family) {

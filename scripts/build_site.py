@@ -318,6 +318,169 @@ def side_effect_counts(rows: list[Any], mapping: dict[str, str]) -> list[dict[st
     return [{"phrase": phrase, "count": count} for phrase, count in counter.most_common()]
 
 
+SEVERITY_KEYWORDS = {
+    "severe": [
+        "severe",
+        "extreme",
+        "unbearable",
+        "debilitating",
+        " er ",
+        "emergency",
+        "hospital",
+        "urgent care",
+        "couldn't keep",
+        "could not keep",
+        "dehydrated",
+        "dehydration",
+        "stopped because",
+        "discontinued because",
+    ],
+    "moderate": [
+        "moderate",
+        "bad",
+        "rough",
+        "strong",
+        "significant",
+        "persistent",
+        "daily",
+        "several days",
+        "worse",
+        "hard to",
+        "struggling",
+    ],
+    "mild": [
+        "mild",
+        "minor",
+        "slight",
+        "little",
+        "manageable",
+        "tolerable",
+        "occasional",
+        "not bad",
+        "went away",
+        "resolved",
+    ],
+}
+
+
+def estimate_side_effect_severity(row: Any, effect: str) -> dict[str, str]:
+    """Temporary severity proxy for page design; intended to be replaced by LLM screening."""
+
+    text = " ".join(
+        str(value or "")
+        for value in (
+            row["evidence"],
+            row["notes"],
+            row["processed_full_text"] or row["full_text"],
+        )
+    ).lower()
+    effect_text = effect.lower()
+    effect_index = text.find(effect_text)
+    if effect_index >= 0:
+        start = max(0, effect_index - 220)
+        end = min(len(text), effect_index + len(effect_text) + 220)
+        text = text[start:end]
+    padded = f" {text} "
+    for severity in ("severe", "moderate", "mild"):
+        if any(keyword in padded for keyword in SEVERITY_KEYWORDS[severity]):
+            return {"severity": severity, "source": "keyword_prototype"}
+    return {"severity": "unscreened", "source": "not_llm_screened"}
+
+
+def side_effect_report_card(row: Any, effects: list[str], severity_by_effect: dict[str, dict[str, str]]) -> dict[str, Any]:
+    return {
+        "report_id": row["report_id"],
+        "post_id": row["post_id"],
+        "created_iso": row["created_iso"],
+        "subreddit": row["subreddit"],
+        "url": row["url"],
+        "title": row["title"],
+        "drug_family": row["drug_family"],
+        "drug_name_mentioned": row["drug_name_mentioned"],
+        "use_status": row["use_status"],
+        "attribution": row["attribution"],
+        "dose_strong": row["dose_strong"],
+        "duration_raw": row["duration_raw"],
+        "duration_weeks": row["duration_weeks"],
+        "weight_change_kg": row["weight_change_kg"],
+        "effects": effects,
+        "severity_by_effect": severity_by_effect,
+        "confidence": row["confidence"],
+        "evidence": row["evidence"],
+        "notes": row["notes"],
+        "text_excerpt": text_excerpt(row, limit=680),
+        "full_text": row["processed_full_text"] or row["full_text"],
+        "content_changed_after_processing": bool(row["content_changed_after_processing"]),
+    }
+
+
+def side_effect_explorer_payload(rows: list[Any], mapping: dict[str, str]) -> dict[str, Any]:
+    effect_counter: Counter[str] = Counter()
+    severity_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    effect_report_ids: dict[str, set[int]] = defaultdict(set)
+    pair_counter: Counter[tuple[str, str]] = Counter()
+    pair_report_ids: dict[tuple[str, str], set[int]] = defaultdict(set)
+    reports: dict[int, dict[str, Any]] = {}
+
+    for row in rows:
+        effects = canonical_side_effects(row_json(row, "side_effects", []), mapping)
+        if not effects:
+            continue
+        report_id = int(row["report_id"])
+        severity_by_effect = {
+            effect: estimate_side_effect_severity(row, effect)
+            for effect in effects
+        }
+        reports[report_id] = side_effect_report_card(row, effects, severity_by_effect)
+        for effect in effects:
+            effect_counter[effect] += 1
+            effect_report_ids[effect].add(report_id)
+            severity_counts[effect][severity_by_effect[effect]["severity"]] += 1
+        for i, source in enumerate(effects):
+            for target in effects[i + 1 :]:
+                pair = tuple(sorted((source, target)))
+                pair_counter[pair] += 1
+                pair_report_ids[pair].add(report_id)
+
+    effects_payload = []
+    for effect, count in effect_counter.most_common():
+        effects_payload.append(
+            {
+                "phrase": effect,
+                "count": count,
+                "report_ids": sorted(effect_report_ids[effect]),
+                "severity_counts": {
+                    severity: severity_counts[effect].get(severity, 0)
+                    for severity in ("mild", "moderate", "severe", "unscreened")
+                },
+            }
+        )
+    links_payload = [
+        {
+            "source": source,
+            "target": target,
+            "count": count,
+            "report_ids": sorted(pair_report_ids[(source, target)]),
+        }
+        for (source, target), count in pair_counter.most_common()
+    ]
+    return {
+        "effects": effects_payload,
+        "links": links_payload,
+        "reports": {str(report_id): report for report_id, report in sorted(reports.items())},
+        "severity_method": {
+            "status": "prototype",
+            "source": "keyword_prototype_until_llm_screening",
+            "levels": ["mild", "moderate", "severe", "unscreened"],
+        },
+        "summary": {
+            "reports_with_side_effects": len(reports),
+            "unique_effects": len(effects_payload),
+            "cooccurrence_links": len(links_payload),
+        },
+    }
+
+
 def normalize_compound_key(value: str | None) -> str:
     if not value:
         return ""
@@ -708,23 +871,49 @@ def render_side_effect_page(family: str, generated_at: str) -> str:
     <section class="page-heading">
       <p class="eyebrow">{html.escape(name)}</p>
       <h1>Side-effect mentions</h1>
-      <p>Frequency counts use explicit, auditable phrase normalization from <code>config/side_effect_normalization.json</code>.</p>
+      <p>Frequency counts use explicit, auditable phrase normalization from <code>config/side_effect_normalization.json</code>. Severity is a prototype keyword screen until the follow-up LLM pass is added.</p>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
-    <section class="effects-layout">
-      <div>
-        <h2>Frequency</h2>
-        <div id="effect-bars" class="effect-bars"></div>
+    <section class="effect-toolbar" aria-label="Side-effect filters">
+      <input id="effect-search" class="effect-search" type="search" placeholder="Search reports, notes, evidence">
+      <div class="network-controls severity-controls">
+        <button type="button" class="segmented active" data-severity="all">All severities</button>
+        <button type="button" class="segmented" data-severity="mild">Mild</button>
+        <button type="button" class="segmented" data-severity="moderate">Moderate</button>
+        <button type="button" class="segmented" data-severity="severe">Severe</button>
+        <button type="button" class="segmented" data-severity="unscreened">Unscreened</button>
       </div>
-      <div>
-        <h2>Phrase cloud</h2>
-        <div id="effect-cloud" class="effect-cloud"></div>
+    </section>
+    <section class="effect-story">
+      <div class="effect-hero-panel">
+        <div>
+          <h2>Effect cloud</h2>
+          <p id="effect-status" class="status">Loading side effects...</p>
+        </div>
+        <div id="effect-cloud" class="effect-cloud effect-cloud-large"></div>
       </div>
+    </section>
+    <section class="side-effect-grid">
+      <div class="effect-network-card">
+        <h2>Co-occurrence</h2>
+        <svg id="effect-network" class="effect-network" role="img" aria-label="{html.escape(name)} side-effect co-occurrence graph"></svg>
+      </div>
+      <aside id="effect-detail" class="detail-panel effect-detail" aria-live="polite">
+        <h2>Effect detail</h2>
+      </aside>
+    </section>
+    <section class="effect-feed-section">
+      <div class="feed-heading">
+        <h2>User reports</h2>
+        <p id="effect-feed-count" class="meta"></p>
+      </div>
+      <div id="effect-feed" class="effect-feed"></div>
+      <div id="effect-feed-sentinel" class="feed-sentinel"></div>
     </section>
     <section class="table-section">
       <h2>Counts</h2>
       <table>
-        <thead><tr><th>Phrase</th><th>Count</th></tr></thead>
+        <thead><tr><th>Phrase</th><th>Reports</th><th>Mild</th><th>Moderate</th><th>Severe</th><th>Unscreened</th></tr></thead>
         <tbody id="effect-table"></tbody>
       </table>
     </section>
@@ -808,6 +997,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
             "points": points,
             "curve": smoothed_curve(points),
             "side_effects": effects,
+            "side_effect_explorer": side_effect_explorer_payload(rows, mapping),
             "side_effect_normalization": mapping,
             "rct": rct or {"present": False, "rows": []},
         }
