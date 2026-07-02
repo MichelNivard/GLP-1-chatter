@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/parse.yml"
   workflow_run:
-    workflows: ["Crawl Reddit candidates"]
+    workflows: ["Crawl Reddit candidates", "Backfill Reddit catalog"]
     types: [completed]
   schedule:
     - cron: "42 4 * * *"
@@ -45,12 +45,22 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          parse_limit="${{ github.event.inputs.limit || '50' }}"
+          event_name="${{ github.event_name }}"
+          source_workflow="${{ github.event.workflow_run.name || '' }}"
+          if [ "$event_name" = "schedule" ]; then
+            parse_limit="0"
+          fi
+          if [ "$event_name" = "workflow_run" ] && [ "$source_workflow" = "Backfill Reddit catalog" ]; then
+            parse_limit="0"
+          fi
           args=(
-            --limit "${{ github.event.inputs.limit || '50' }}"
+            --limit "$parse_limit"
             --model gpt-5.4-nano
             --rescreen-model gpt-5.4-mini
             --prompt-cache-retention 24h
           )
+          echo "Parse limit: $parse_limit"
           if [ "${{ github.event.inputs.retry_errors || 'false' }}" = "true" ]; then
             args+=(--retry-errors)
           fi

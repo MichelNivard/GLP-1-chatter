@@ -1,0 +1,162 @@
+name: Backfill Reddit catalog
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - ".github/workflows/backfill.yml"
+  schedule:
+    - cron: "17 0,12 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Backfill target: rotate, tirz, sema, reta, or all"
+        required: false
+        default: "rotate"
+        type: choice
+        options:
+          - rotate
+          - tirz
+          - sema
+          - reta
+          - all
+      pages:
+        description: "Pages per subreddit/term/source type"
+        required: false
+        default: "8"
+      delay_seconds:
+        description: "Delay between requests"
+        required: false
+        default: "10"
+      max_minutes:
+        description: "Maximum runtime before graceful stop"
+        required: false
+        default: "55"
+      max_requests:
+        description: "Maximum HTTP requests before graceful stop, 0 means no cap"
+        required: false
+        default: "0"
+      source_types:
+        description: "Source types to crawl"
+        required: false
+        default: "submission,comment"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glp1-db-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BACKFILL_UNTIL_UTC: "2026-07-09T00:00:00Z"
+
+jobs:
+  backfill:
+    if: ${{ github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Initialize database
+        run: python scripts/init_db.py
+      - name: Choose backfill target
+        id: target
+        shell: bash
+        env:
+          TARGET_INPUT: ${{ github.event.inputs.target || 'rotate' }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            now_epoch="$(date -u +%s)"
+            until_epoch="$(date -u -d "$BACKFILL_UNTIL_UTC" +%s)"
+            if [ "$now_epoch" -ge "$until_epoch" ]; then
+              echo "Scheduled backfill expired at $BACKFILL_UNTIL_UTC."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          target="${TARGET_INPUT:-rotate}"
+          if [ "$target" = "rotate" ]; then
+            slot=$(( ($(date -u +%s) / 43200) % 3 ))
+            case "$slot" in
+              0) target="tirz" ;;
+              1) target="sema" ;;
+              *) target="reta" ;;
+            esac
+          fi
+
+          case "$target" in
+            tirz)
+              subreddits="Mounjaro,MounjaroMaintenance,MounjaroUK,Zepbound,tirzepatidecompound,compoundedtirzepatide"
+              terms="tirz,tirzepatide,mounjaro,zepbound"
+              ;;
+            sema)
+              subreddits="Semaglutide,SemaglutideFreeSpeech,Ozempic,OzempicForWeightLoss,WegovyWeightLoss,WegovyUK"
+              terms="sema,semaglutide,ozempic,wegovy,rybelsus"
+              ;;
+            reta)
+              subreddits="Retatrutide,RetatrutideTrial,Peptides,GLP1,GLP1_BeforeAfter"
+              terms="reta,retatrutide,retaglutide"
+              ;;
+            all)
+              subreddits="Retatrutide,RetatrutideTrial,Peptides,Semaglutide,SemaglutideFreeSpeech,Ozempic,OzempicForWeightLoss,WegovyWeightLoss,WegovyUK,Mounjaro,MounjaroMaintenance,MounjaroUK,Zepbound,tirzepatidecompound,compoundedtirzepatide,GLP1,GLP1_BeforeAfter"
+              terms="reta,retatrutide,retaglutide,tirz,tirzepatide,mounjaro,zepbound,sema,semaglutide,ozempic,wegovy,rybelsus"
+              ;;
+            *)
+              echo "Unknown backfill target: $target" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "subreddits=$subreddits" >> "$GITHUB_OUTPUT"
+          echo "terms=$terms" >> "$GITHUB_OUTPUT"
+          echo "Backfill target: $target"
+          echo "Subreddits: $subreddits"
+          echo "Terms: $terms"
+      - name: Crawl historical Reddit candidates
+        if: ${{ steps.target.outputs.skip != 'true' }}
+        shell: bash
+        run: |
+          python scripts/crawl_reddit.py \
+            --source pullpush \
+            --seed-historical \
+            --resume-checkpoints \
+            --limit 0 \
+            --pages "${{ github.event.inputs.pages || '8' }}" \
+            --delay-seconds "${{ github.event.inputs.delay_seconds || '10' }}" \
+            --max-minutes "${{ github.event.inputs.max_minutes || '55' }}" \
+            --max-requests "${{ github.event.inputs.max_requests || '0' }}" \
+            --subreddits "${{ steps.target.outputs.subreddits }}" \
+            --terms "${{ steps.target.outputs.terms }}" \
+            --source-types "${{ github.event.inputs.source_types || 'submission,comment' }}"
+      - name: Commit backfill updates
+        if: ${{ steps.target.outputs.skip != 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/glp1_reports.sqlite3
+          if git diff --cached --quiet; then
+            echo "No database changes to commit."
+          else
+            git commit -m "Backfill Reddit crawl database"
+            branch="${GITHUB_REF_NAME:-master}"
+            pushed=false
+            for attempt in 1 2 3; do
+              git pull --rebase origin "$branch"
+              if git push; then
+                pushed=true
+                break
+              fi
+              echo "Push failed on attempt $attempt; retrying after rebase."
+              sleep $((attempt * 10))
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "Failed to push backfill database update after retries." >&2
+              exit 1
+            fi
+          fi

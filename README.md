@@ -176,6 +176,7 @@ Side effects are extracted as lowercase phrases by the LLM, then normalized in c
 Workflows:
 
 - `.github/workflows/crawl.yml`: scheduled daily at 03:18 UTC and manual dispatch. Crawls recent candidates, default last 7 days, and commits DB changes.
+- `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-07-09T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
 - `.github/workflows/parse.yml`: runs after crawl, on schedule, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Parses one pending post/comment per API call and commits DB changes.
 - `.github/workflows/pages.yml`: rebuilds the static site from SQLite and deploys to GitHub Pages.
 
