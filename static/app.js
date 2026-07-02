@@ -70,6 +70,38 @@ function pathFrom(points, xScale, yScale, xKey, yKey) {
     .join(" ");
 }
 
+function niceStep(span, targetTicks) {
+  if (!Number.isFinite(span) || span <= 0) return 1;
+  const raw = span / Math.max(1, targetTicks);
+  const exponent = Math.floor(Math.log10(raw));
+  const base = 10 ** exponent;
+  const fraction = raw / base;
+  const niceFraction = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+  return niceFraction * base;
+}
+
+function niceTicks(min, max, targetTicks = 6) {
+  let lower = min;
+  let upper = max;
+  if (lower === upper) {
+    lower -= 1;
+    upper += 1;
+  }
+  const step = niceStep(upper - lower, targetTicks);
+  const start = Math.floor(lower / step) * step;
+  const end = Math.ceil(upper / step) * step;
+  const values = [];
+  for (let value = start, guard = 0; value <= end + step * 0.5 && guard < 50; value += step, guard += 1) {
+    values.push(Math.abs(value) < step / 1000 ? 0 : Number(value.toFixed(10)));
+  }
+  return values;
+}
+
+function formatTick(value) {
+  if (Math.abs(value - Math.round(value)) < 0.01) return String(Math.round(value));
+  return value.toFixed(1).replace(/\.0$/, "");
+}
+
 function renderDetail(point) {
   const detail = document.getElementById("detail");
   const compounds = (point.other_compounds_concurrent || []).join(", ") || "none stated";
@@ -130,11 +162,11 @@ function renderScatter(data) {
 
   const width = 920;
   const height = 560;
-  const margin = { top: 30, right: 32, bottom: 72, left: 78 };
+  const margin = { top: 72, right: 38, bottom: 70, left: 86 };
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  const xValues = points.map((point) => Number(point.duration_weeks));
-  const yValues = points.map((point) => Number(point.weight_change_kg));
+  let xValues = points.map((point) => Number(point.duration_weeks));
+  let yValues = points.map((point) => Number(point.weight_change_kg));
   data.curve?.forEach((point) => {
     xValues.push(Number(point.weeks));
     yValues.push(Number(point.weight_change_kg));
@@ -145,8 +177,32 @@ function renderScatter(data) {
       yValues.push(Number(point.lower), Number(point.upper), Number(point.mean));
     });
   });
-  const [xMin, xMax] = extent(xValues, 0.04);
-  const [yMin, yMax] = extent(yValues, 0.12);
+  xValues = xValues.filter(Number.isFinite);
+  yValues = yValues.filter(Number.isFinite);
+  if (!xValues.length || !yValues.length) {
+    status.textContent = "No plottable numeric reports yet.";
+    svg.setAttribute("viewBox", "0 0 900 520");
+    return;
+  }
+  let xDomainMin = Math.min(0, ...xValues);
+  let xDomainMax = Math.max(...xValues);
+  let yDomainMin = Math.min(0, ...yValues);
+  let yDomainMax = Math.max(0, ...yValues);
+  if (xDomainMin === xDomainMax) xDomainMax += 1;
+  if (yDomainMin === yDomainMax) {
+    yDomainMin -= 1;
+    yDomainMax += 1;
+  }
+  xDomainMax += (xDomainMax - xDomainMin) * 0.04;
+  const yPad = (yDomainMax - yDomainMin) * 0.08;
+  yDomainMin -= yPad;
+  yDomainMax += yPad;
+  const xTickValues = niceTicks(xDomainMin, xDomainMax, 6);
+  const yTickValues = niceTicks(yDomainMin, yDomainMax, 7);
+  const xMin = Math.min(xDomainMin, ...xTickValues);
+  const xMax = Math.max(xDomainMax, ...xTickValues);
+  const yMin = Math.min(yDomainMin, ...yTickValues);
+  const yMax = Math.max(yDomainMax, ...yTickValues);
   const plotW = width - margin.left - margin.right;
   const plotH = height - margin.top - margin.bottom;
   const xScale = (value) => margin.left + ((value - xMin) / (xMax - xMin)) * plotW;
@@ -154,24 +210,22 @@ function renderScatter(data) {
 
   svg.appendChild(el("rect", { x: margin.left, y: margin.top, width: plotW, height: plotH, class: "plot-bg" }));
 
-  const xTicks = 6;
-  const yTicks = 6;
-  for (let i = 0; i <= xTicks; i += 1) {
-    const value = xMin + (xMax - xMin) * i / xTicks;
-    const x = xScale(value);
-    svg.appendChild(el("line", { x1: x, x2: x, y1: margin.top, y2: margin.top + plotH, class: "grid" }));
-    svg.appendChild(el("text", { x, y: height - 35, "text-anchor": "middle", class: "tick" }, value.toFixed(0)));
-  }
-  for (let i = 0; i <= yTicks; i += 1) {
-    const value = yMin + (yMax - yMin) * i / yTicks;
+  yTickValues.forEach((value) => {
     const y = yScale(value);
-    svg.appendChild(el("line", { x1: margin.left, x2: margin.left + plotW, y1: y, y2: y, class: "grid" }));
-    svg.appendChild(el("text", { x: margin.left - 12, y: y + 4, "text-anchor": "end", class: "tick" }, value.toFixed(0)));
-  }
+    svg.appendChild(el("line", { x1: margin.left, x2: margin.left + plotW, y1: y, y2: y, class: "grid grid-y" }));
+    svg.appendChild(el("text", { x: margin.left - 13, y: y + 4, "text-anchor": "end", class: "tick y-tick" }, formatTick(value)));
+  });
+  xTickValues.forEach((value) => {
+    const x = xScale(value);
+    svg.appendChild(el("line", { x1: x, x2: x, y1: margin.top, y2: margin.top + plotH, class: "grid grid-x" }));
+    svg.appendChild(el("line", { x1: x, x2: x, y1: margin.top + plotH, y2: margin.top + plotH + 6, class: "axis-tick" }));
+    svg.appendChild(el("text", { x, y: height - 34, "text-anchor": "middle", class: "tick x-tick" }, formatTick(value)));
+  });
   svg.appendChild(el("line", { x1: margin.left, x2: margin.left + plotW, y1: yScale(0), y2: yScale(0), class: "zero-line" }));
-  svg.appendChild(el("text", { x: margin.left + plotW / 2, y: height - 8, "text-anchor": "middle", class: "axis-label" }, "Duration (weeks)"));
-  const yLabel = el("text", { x: 18, y: margin.top + plotH / 2, "text-anchor": "middle", class: "axis-label", transform: `rotate(-90 18 ${margin.top + plotH / 2})` }, "Weight change (kg)");
-  svg.appendChild(yLabel);
+  svg.appendChild(el("line", { x1: margin.left, x2: margin.left + plotW, y1: margin.top + plotH, y2: margin.top + plotH, class: "plot-frame" }));
+  svg.appendChild(el("line", { x1: margin.left, x2: margin.left, y1: margin.top, y2: margin.top + plotH, class: "plot-frame" }));
+  svg.appendChild(el("text", { x: margin.left, y: 34, "text-anchor": "start", class: "axis-title" }, "Weight change (kg)"));
+  svg.appendChild(el("text", { x: margin.left + plotW, y: height - 10, "text-anchor": "end", class: "axis-title" }, "Duration (weeks)"));
 
   rctSeries.forEach((series, index) => {
     const rows = series.rows || [];
@@ -191,7 +245,7 @@ function renderScatter(data) {
     const circle = el("circle", {
       cx: xScale(point.duration_weeks),
       cy: yScale(point.weight_change_kg),
-      r: 5.5,
+      r: 4.7,
       tabindex: 0,
       class: `point point-${data.family}`,
     });
@@ -203,17 +257,17 @@ function renderScatter(data) {
   });
 
   const legend = el("g", { class: "legend" });
-  legend.appendChild(el("circle", { cx: width - 245, cy: 34, r: 5, class: `point point-${data.family}` }));
-  legend.appendChild(el("text", { x: width - 232, y: 38 }, "Reddit reports"));
-  legend.appendChild(el("line", { x1: width - 245, x2: width - 222, y1: 58, y2: 58, class: "fit-line" }));
-  legend.appendChild(el("text", { x: width - 214, y: 62 }, "Reddit smoothed fit"));
+  legend.appendChild(el("circle", { cx: width - 288, cy: 24, r: 4.7, class: `point point-${data.family}` }));
+  legend.appendChild(el("text", { x: width - 275, y: 28 }, "Reddit reports"));
+  legend.appendChild(el("line", { x1: width - 288, x2: width - 262, y1: 47, y2: 47, class: "fit-line" }));
+  legend.appendChild(el("text", { x: width - 253, y: 51 }, "Reddit smoothed fit"));
   rctSeries.forEach((series, index) => {
     const rows = series.rows || [];
     if (rows.length < 2) return;
-    const y = 82 + index * 24;
+    const y = 69 + index * 22;
     const colors = rctPalette[index % rctPalette.length];
-    legend.appendChild(el("line", { x1: width - 245, x2: width - 222, y1: y, y2: y, class: "rct-line", style: `stroke:${colors.line}` }));
-    legend.appendChild(el("text", { x: width - 214, y: y + 4 }, `${series.label} RCT mean +/- 1.96 SD`));
+    legend.appendChild(el("line", { x1: width - 288, x2: width - 262, y1: y, y2: y, class: "rct-line", style: `stroke:${colors.line}` }));
+    legend.appendChild(el("text", { x: width - 253, y: y + 4 }, `${series.label} RCT mean +/- 1.96 SD`));
   });
   svg.appendChild(legend);
 }

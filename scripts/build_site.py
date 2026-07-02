@@ -182,6 +182,63 @@ def _plot_scale(value: float, domain_min: float, domain_max: float, range_min: f
     return range_min + (value - domain_min) / (domain_max - domain_min) * (range_max - range_min)
 
 
+def _nice_step(span: float, target_ticks: int) -> float:
+    if span <= 0 or not math.isfinite(span):
+        return 1.0
+    raw = span / max(1, target_ticks)
+    exponent = math.floor(math.log10(raw))
+    base = 10**exponent
+    fraction = raw / base
+    if fraction <= 1:
+        nice_fraction = 1
+    elif fraction <= 2:
+        nice_fraction = 2
+    elif fraction <= 5:
+        nice_fraction = 5
+    else:
+        nice_fraction = 10
+    return nice_fraction * base
+
+
+def _nice_ticks(domain_min: float, domain_max: float, target_ticks: int = 5) -> list[float]:
+    if domain_min == domain_max:
+        domain_min -= 1
+        domain_max += 1
+    step = _nice_step(domain_max - domain_min, target_ticks)
+    start = math.floor(domain_min / step) * step
+    end = math.ceil(domain_max / step) * step
+    ticks: list[float] = []
+    value = start
+    guard = 0
+    while value <= end + step * 0.5 and guard < 40:
+        ticks.append(0.0 if abs(value) < step / 1_000 else round(value, 10))
+        value += step
+        guard += 1
+    return ticks
+
+
+def _format_axis_tick(value: float) -> str:
+    if abs(value - round(value)) < 0.01:
+        return str(int(round(value)))
+    return f"{value:.1f}".rstrip("0").rstrip(".")
+
+
+def _quantile(values: list[float], probability: float) -> float:
+    cleaned = sorted(value for value in values if math.isfinite(value))
+    if not cleaned:
+        return 0.0
+    if len(cleaned) == 1:
+        return cleaned[0]
+    position = (len(cleaned) - 1) * probability
+    lower_index = math.floor(position)
+    upper_index = math.ceil(position)
+    if lower_index == upper_index:
+        return cleaned[lower_index]
+    lower = cleaned[lower_index]
+    upper = cleaned[upper_index]
+    return lower + (upper - lower) * (position - lower_index)
+
+
 def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
     points = [
         point
@@ -207,35 +264,41 @@ def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
         </div>
 """
 
-    width = 300
-    height = 150
-    left = 28
-    right = 12
-    top = 14
-    bottom = 26
+    width = 360
+    height = 220
+    left = 52
+    right = 16
+    top = 34
+    bottom = 46
     x_values = [float(point["duration_weeks"]) for point in points]
     y_values = [float(point["weight_change_kg"]) for point in points]
     x_values.extend(float(point["weeks"]) for point in curve)
     y_values.extend(float(point["weight_change_kg"]) for point in curve)
     y_values.append(0.0)
-    x_min = min(x_values)
-    x_max = max(x_values)
-    y_min = min(y_values)
-    y_max = max(y_values)
+    x_min = 0.0
+    x_max = max(x_values) if len(x_values) < 30 else _quantile(x_values, 0.98)
+    y_min = min(y_values) if len(y_values) < 30 else _quantile(y_values, 0.05)
+    y_max = max(y_values) if len(y_values) < 30 else _quantile(y_values, 0.95)
+    y_min = min(y_min, 0.0)
+    y_max = max(y_max, 0.0)
     x_span = x_max - x_min
     y_span = y_max - y_min
     if x_span == 0:
-        x_min -= 1
         x_max += 1
     else:
-        x_min = max(0.0, x_min - x_span * 0.06)
         x_max += x_span * 0.06
     if y_span == 0:
         y_min -= 1
         y_max += 1
     else:
-        y_min -= y_span * 0.12
-        y_max += y_span * 0.12
+        y_min -= y_span * 0.10
+        y_max += y_span * 0.10
+    x_ticks = _nice_ticks(x_min, x_max, 4)
+    y_ticks = _nice_ticks(y_min, y_max, 5)
+    x_min = min(x_min, *x_ticks)
+    x_max = max(x_max, *x_ticks)
+    y_min = min(y_min, *y_ticks)
+    y_max = max(y_max, *y_ticks)
 
     def x_pos(value: float) -> float:
         return _plot_scale(value, x_min, x_max, left, width - right)
@@ -244,9 +307,22 @@ def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
         return _plot_scale(value, y_min, y_max, height - bottom, top)
 
     zero_y = y_pos(0.0)
+    plot_width = width - left - right
+    plot_height = height - top - bottom
+    clip_id = f"mini-clip-{family}"
+    y_grid_nodes = "\n".join(
+        f'<line class="mini-grid mini-grid-y" x1="{left}" x2="{width - right}" y1="{y_pos(tick):.2f}" y2="{y_pos(tick):.2f}" />'
+        f'<text class="mini-tick mini-y-tick" x="{left - 7}" y="{y_pos(tick) + 3.5:.2f}" text-anchor="end">{html.escape(_format_axis_tick(tick))}</text>'
+        for tick in y_ticks
+    )
+    x_tick_nodes = "\n".join(
+        f'<line class="mini-axis-tick" x1="{x_pos(tick):.2f}" x2="{x_pos(tick):.2f}" y1="{height - bottom}" y2="{height - bottom + 5}" />'
+        f'<text class="mini-tick mini-x-tick" x="{x_pos(tick):.2f}" y="{height - bottom + 20}" text-anchor="middle">{html.escape(_format_axis_tick(tick))}</text>'
+        for tick in x_ticks
+    )
     point_nodes = "\n".join(
         f'<circle class="mini-point" cx="{x_pos(float(point["duration_weeks"])):.2f}" '
-        f'cy="{y_pos(float(point["weight_change_kg"])):.2f}" r="2.4" />'
+        f'cy="{y_pos(float(point["weight_change_kg"])):.2f}" r="2.6" />'
         for point in points
     )
     curve_path = ""
@@ -259,13 +335,23 @@ def render_home_mini_plot(family: str, payload: dict[str, Any]) -> str:
     return f"""
         <svg class="mini-chart mini-plot" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(name)} weight-change mini plot">
           <title>{html.escape(name)} Reddit reports: duration by weight change</title>
+          <defs>
+            <clipPath id="{clip_id}">
+              <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" />
+            </clipPath>
+          </defs>
+          <rect class="mini-panel" x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" />
+          {y_grid_nodes}
+          <line class="mini-zero" x1="{left}" y1="{zero_y:.2f}" x2="{width - right}" y2="{zero_y:.2f}" />
           <line class="mini-axis" x1="{left}" y1="{height - bottom}" x2="{width - right}" y2="{height - bottom}" />
           <line class="mini-axis" x1="{left}" y1="{top}" x2="{left}" y2="{height - bottom}" />
-          <line class="mini-zero" x1="{left}" y1="{zero_y:.2f}" x2="{width - right}" y2="{zero_y:.2f}" />
-          {curve_path}
-          {point_nodes}
-          <text class="mini-label" x="{left}" y="{height - 7}">Duration</text>
-          <text class="mini-label" x="{left}" y="10">Weight change</text>
+          {x_tick_nodes}
+          <g clip-path="url(#{clip_id})">
+            {curve_path}
+            {point_nodes}
+          </g>
+          <text class="mini-axis-label mini-y-label" x="{left}" y="18">Weight change (kg)</text>
+          <text class="mini-axis-label mini-x-label" x="{width - right}" y="{height - 7}" text-anchor="end">Duration (weeks)</text>
         </svg>
 """
 
@@ -1062,9 +1148,9 @@ def render_home(summary: dict[str, Any], generated_at: str, family_payloads: dic
 
       <p>Importantly, the website is designed to keep the data close to the underlying stories. Interactive widgets allow users to move from aggregate summaries back toward the posts and experiences that generated them. A table of side effects should not float free from the people reporting them. A weight-loss estimate should be traceable to the messy narrative from which it came. The aim is to quantify without fully flattening the human context.</p>
 
-      <p>This is still a work in progress. The extraction is imperfect. The communities are not representative. The data should be interpreted cautiously. But the phenomenon itself is too important to ignore. GLP-1 drugs are changing obesity treatment, diabetes care, pharmaceutical markets, online medicine, and the relationship between patients, consumers, physicians, and platforms.</p>
-
       <p>This website is a first attempt to map that change from the ground up: through the stories people tell while trying to navigate one of the most consequential medical consumer movements of the decade.</p>
+
+      <p>This is still a work in progress. The extraction is imperfect. The communities are not representative. The data should be interpreted cautiously. But the phenomenon itself is too important to ignore. GLP-1 drugs are changing obesity treatment, diabetes care, pharmaceutical markets, online medicine, and the relationship between patients, consumers, physicians, and platforms.</p>
 
       <footer class="home-footnotes" aria-label="Site caveats and shortcuts">
         <p>This is observational social-media text mining, not medical advice, clinical evidence, or proof of causality. Each plot point remains linked back to the underlying Reddit text.</p>
