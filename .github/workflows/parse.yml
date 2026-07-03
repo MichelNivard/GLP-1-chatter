@@ -61,7 +61,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          parse_limit="${{ github.event.inputs.limit || '50' }}"
+          parse_limit="${{ github.event.inputs.limit || '300' }}"
           event_name="${{ github.event_name }}"
           source_workflow="${{ github.event.workflow_run.name || '' }}"
           if [ "$event_name" = "schedule" ]; then
