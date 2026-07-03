@@ -1012,13 +1012,17 @@ function renderConcurrent(data, mode = "all") {
     linkedNames.add(link.target);
   });
   const familyOrder = ["reta", "tirz", "sema", "amylin", "glp1_other", "diabetes_drug", "stimulant", "hormone", "peptide", "supplement", "other_drug", "lifestyle", "unclear"];
+  const familyRank = (family) => {
+    const index = familyOrder.indexOf(family);
+    return index === -1 ? familyOrder.length : index;
+  };
   const nodes = (data.nodes || [])
     .filter((node) => linkedNames.has(node.id) && Number(node[countKey] || 0) > 0)
-    .sort((a, b) => {
-      const familyDiff = familyOrder.indexOf(a.family) - familyOrder.indexOf(b.family);
-      if (familyDiff) return familyDiff;
-      return b[countKey] - a[countKey] || a.label.localeCompare(b.label);
-    });
+    .sort((a, b) =>
+      Number(b[countKey] || 0) - Number(a[countKey] || 0)
+      || familyRank(a.family) - familyRank(b.family)
+      || String(a.label || a.id).localeCompare(String(b.label || b.id))
+    );
 
   renderNormalizationAudit(data);
   if (!nodes.length || !links.length) {
@@ -1030,7 +1034,7 @@ function renderConcurrent(data, mode = "all") {
   const visibleNodes = nodes.slice(0, limit);
   const visibleIds = new Set(visibleNodes.map((node) => node.id));
   const visibleLinks = links.filter((link) => visibleIds.has(link.source) && visibleIds.has(link.target));
-  status.textContent = `${data.summary?.reports || 0} reports, ${visibleNodes.length} of ${nodes.length} compounds shown, ${visibleLinks.length} pair connections in the matrix (${mode === "stack" ? "stack-only" : "all concurrent mentions"}). Darker squares indicate more reports; click a square to inspect the source posts.`;
+  status.textContent = `${data.summary?.reports || 0} reports, top ${visibleNodes.length} of ${nodes.length} compounds by ${mode === "stack" ? "stack-only" : "all-concurrent"} report count shown, ${visibleLinks.length} pair connections in the matrix. Darker squares indicate more reports; click a square to inspect the source posts.`;
   const linkByPair = new Map();
   visibleLinks.forEach((link) => {
     linkByPair.set([link.source, link.target].sort().join("|||"), link);
