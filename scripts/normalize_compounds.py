@@ -20,7 +20,7 @@ from glp1_common import DEFAULT_DB, ROOT, connect_db, ensure_schema, read_json, 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.4-nano"
-NORMALIZATION_VERSION = "2026-07-02-v1"
+NORMALIZATION_VERSION = "2026-07-03-one-by-one-v1"
 VALID_FAMILIES = {
     "reta",
     "tirz",
@@ -49,7 +49,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenAI model for unresolved names")
     parser.add_argument("--limit", type=int, default=0, help="Maximum unresolved raw names to send; 0 means no limit")
-    parser.add_argument("--chunk-size", type=int, default=60, help="Raw names per OpenAI call")
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1,
+        help="Deprecated compatibility flag; normalization now sends exactly one raw name per API call",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Summarize work without writing output")
     parser.add_argument(
         "--no-api",
@@ -59,8 +64,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-output-tokens",
         type=int,
-        default=5000,
-        help="OpenAI max output tokens per normalization batch",
+        default=1000,
+        help="OpenAI max output tokens per one-name normalization call",
     )
     parser.add_argument(
         "--prompt-cache-retention",
@@ -185,36 +190,26 @@ def normalization_schema() -> dict[str, Any]:
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "items": {
+            "raw": {"type": "string"},
+            "compounds": {
                 "type": "array",
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
                     "properties": {
-                        "raw": {"type": "string"},
-                        "compounds": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "properties": {
-                                    "canonical_name": {"type": "string"},
-                                    "family": {
-                                        "type": "string",
-                                        "enum": sorted(VALID_FAMILIES),
-                                    },
-                                    "confidence": {"type": "number"},
-                                    "note": {"type": ["string", "null"]},
-                                },
-                                "required": ["canonical_name", "family", "confidence", "note"],
-                            },
+                        "canonical_name": {"type": "string"},
+                        "family": {
+                            "type": "string",
+                            "enum": sorted(VALID_FAMILIES),
                         },
+                        "confidence": {"type": "number"},
+                        "note": {"type": ["string", "null"]},
                     },
-                    "required": ["raw", "compounds"],
+                    "required": ["canonical_name", "family", "confidence", "note"],
                 },
-            }
+            },
         },
-        "required": ["items"],
+        "required": ["raw", "compounds"],
     }
 
 
@@ -233,7 +228,7 @@ def call_openai(
     *,
     model: str,
     prompt: str,
-    raw_names: list[str],
+    raw_name: str,
     max_output_tokens: int,
     cache_key: str,
     prompt_cache_retention: str,
@@ -249,8 +244,8 @@ def call_openai(
             {
                 "role": "user",
                 "content": (
-                    "Normalize these raw strings. Preserve each string exactly in the raw field.\n\n"
-                    f"{json.dumps(raw_names, ensure_ascii=False, indent=2)}"
+                    "Normalize this one raw string. Preserve it exactly in the raw field.\n\n"
+                    f"{raw_name}"
                 ),
             },
         ],
@@ -294,26 +289,21 @@ def call_openai(
         raise RuntimeError(f"OpenAI output was not valid JSON: {exc}: {text[:1000]}") from exc
 
 
-def validate_result(result: dict[str, Any], requested: list[str]) -> None:
-    if not isinstance(result, dict) or not isinstance(result.get("items"), list):
-        raise ValueError("normalization result must contain an items array")
-    seen = {item.get("raw") for item in result["items"] if isinstance(item, dict)}
-    missing = [raw for raw in requested if raw not in seen]
-    if missing:
-        raise ValueError(f"normalization result missing raw strings: {missing[:10]}")
-    for item in result["items"]:
-        if not isinstance(item, dict):
-            raise ValueError("normalization item is not an object")
-        if not isinstance(item.get("raw"), str):
-            raise ValueError("normalization item raw is not a string")
-        if not isinstance(item.get("compounds"), list):
-            raise ValueError(f"{item.get('raw')}: compounds is not an array")
-        for compound in item["compounds"]:
-            if compound.get("family") not in VALID_FAMILIES:
-                raise ValueError(f"{item['raw']}: invalid family {compound.get('family')}")
-            confidence = compound.get("confidence")
-            if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
-                raise ValueError(f"{item['raw']}: invalid confidence")
+def validate_result(result: dict[str, Any], requested: str) -> None:
+    if not isinstance(result, dict):
+        raise ValueError("normalization result must be an object")
+    if result.get("raw") != requested:
+        raise ValueError(f"normalization result raw mismatch: expected {requested!r}, got {result.get('raw')!r}")
+    if not isinstance(result.get("compounds"), list):
+        raise ValueError(f"{requested}: compounds is not an array")
+    for compound in result["compounds"]:
+        if not isinstance(compound, dict):
+            raise ValueError(f"{requested}: compound is not an object")
+        if compound.get("family") not in VALID_FAMILIES:
+            raise ValueError(f"{requested}: invalid family {compound.get('family')}")
+        confidence = compound.get("confidence")
+        if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
+            raise ValueError(f"{requested}: invalid confidence")
 
 
 def entry(raw: str, count: int, compounds: list[dict[str, Any]], source: str) -> dict[str, Any]:
@@ -347,6 +337,18 @@ def merge_items(existing: dict[str, Any], items: list[dict[str, Any]], counts: C
                 }
             )
         store[raw] = entry(raw, counts.get(raw, 0), compounds, source)
+
+
+def refresh_stats(existing: dict[str, Any], counts: Counter[str], alias_items: list[dict[str, Any]], api_items: list[dict[str, Any]]) -> None:
+    store = existing.get("items", {})
+    existing["stats"] = {
+        "raw_names": len(counts),
+        "processed_raw_names": len([raw for raw in counts if raw in store]),
+        "alias_normalized": len([raw for raw in counts if store.get(raw, {}).get("source") == "alias"]),
+        "openai_normalized": len([raw for raw in counts if store.get(raw, {}).get("source") == "openai"]),
+        "empty_normalized": len([raw for raw in counts if raw in store and not store[raw].get("compounds")]),
+        "unresolved_remaining": len([raw for raw in counts if raw not in store]),
+    }
 
 
 def main() -> int:
@@ -385,39 +387,31 @@ def main() -> int:
     if unresolved and not args.no_api:
         prompt = (ROOT / "prompts" / "normalize_compounds.md").read_text(encoding="utf-8")
         cache_key = prompt_cache_key(args.model)
-        for start in range(0, len(unresolved), args.chunk_size):
-            chunk = unresolved[start : start + args.chunk_size]
-            print(f"normalizing with {args.model}: {start + 1}-{start + len(chunk)} of {len(unresolved)}")
+        for index, raw in enumerate(unresolved, start=1):
+            print(f"normalizing with {args.model}: {index} of {len(unresolved)}: {raw}")
             result, chunk_usage = call_openai(
                 model=args.model,
                 prompt=prompt,
-                raw_names=chunk,
+                raw_name=raw,
                 max_output_tokens=args.max_output_tokens,
                 cache_key=cache_key,
                 prompt_cache_retention=args.prompt_cache_retention,
             )
-            validate_result(result, chunk)
-            api_items.extend(result["items"])
+            validate_result(result, raw)
+            api_items.append(result)
+            merge_items(existing, [result], counts, "openai")
             if chunk_usage:
                 usage.append(chunk_usage)
+            existing["usage"] = usage
+            refresh_stats(existing, counts, alias_items, api_items)
+            if not args.dry_run:
+                write_json(args.output, existing)
     elif unresolved:
         print(f"unresolved_without_api={len(unresolved)}")
 
     merge_items(existing, api_items, counts, "openai")
     existing["usage"] = usage
-    existing["stats"] = {
-        "raw_names": len(counts),
-        "alias_normalized": len(alias_items),
-        "openai_normalized": len(api_items),
-        "unresolved_remaining": len(
-            [
-                raw
-                for raw in counts
-                if raw not in existing.get("items", {})
-                or not existing["items"][raw].get("compounds")
-            ]
-        ),
-    }
+    refresh_stats(existing, counts, alias_items, api_items)
 
     print(json.dumps(existing["stats"], indent=2, sort_keys=True))
     if args.dry_run:

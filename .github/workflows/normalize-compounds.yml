@@ -1,0 +1,98 @@
+name: Normalize compound names
+
+on:
+  schedule:
+    - cron: "33 6 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum unresolved raw compound names to normalize"
+        required: false
+        default: "300"
+      no_api:
+        description: "Use aliases only; do not call OpenAI"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glp1-compound-normalization-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore database artifact
+        run: python scripts/db_artifact.py unpack --if-present
+      - name: Initialize database
+        run: python scripts/init_db.py
+      - name: Decide schedule cadence
+        id: cadence
+        shell: bash
+        run: |
+          should_run="true"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            today="$(date -u +%Y-%m-%d)"
+            dow="$(date -u +%u)"
+            if [[ "$today" > "2026-07-17" && "$dow" != "1" ]]; then
+              should_run="false"
+            fi
+          fi
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+      - name: Normalize unresolved compound names one item per API call
+        if: steps.cadence.outputs.should_run == 'true'
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          limit="${{ github.event.inputs.limit || '300' }}"
+          args=(
+            --limit "$limit"
+            --model gpt-5.4-nano
+            --prompt-cache-retention 24h
+          )
+          if [ "${{ github.event.inputs.no_api || 'false' }}" = "true" ]; then
+            args+=(--no-api)
+          fi
+          python scripts/normalize_compounds.py "${args[@]}"
+      - name: Upload normalization recovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glp1-compound-normalizations-${{ github.run_id }}
+          path: data/compound_normalizations.json
+          retention-days: 14
+      - name: Commit compound normalization cache
+        if: steps.cadence.outputs.should_run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/compound_normalizations.json
+          if git diff --cached --quiet; then
+            echo "No compound normalization changes to commit."
+          else
+            git commit -m "Normalize compound names"
+            branch="${GITHUB_REF_NAME:-master}"
+            pushed=false
+            for attempt in 1 2 3; do
+              git pull --rebase origin "$branch"
+              if git push; then
+                pushed=true
+                break
+              fi
+              echo "Push failed on attempt $attempt; retrying after rebase."
+              sleep $((attempt * 10))
+            done
+            if [ "$pushed" != "true" ]; then
+              echo "Failed to push compound normalization update after retries." >&2
+              exit 1
+            fi
+          fi

@@ -113,6 +113,16 @@ Useful flags:
 
 The screen writes report-level status to `side_effect_screening_runs` and one row per normalized side-effect phrase to `side_effect_screenings`. Missing rows appear as `unscreened` on the website.
 
+## Local Compound Normalization
+
+Concurrent-use visualizations use explicit aliases plus an optional LLM cache:
+
+```bash
+python scripts/normalize_compounds.py --limit 300
+```
+
+The script sends exactly one unresolved raw compound string per OpenAI API call. It writes progress to `data/compound_normalizations.json` after each successful item, so expensive normalization work is not all lost if a later string fails. Use `--no-api` to rebuild from aliases only.
+
 ## Processing Semantics
 
 The raw Reddit item identity is authoritative:
@@ -217,6 +227,7 @@ Workflows:
 - `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-07-09T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
 - `.github/workflows/parse.yml`: runs after crawl, on schedule, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Parses one pending post/comment per API call and commits DB changes.
 - `.github/workflows/screen-side-effects.yml`: runs after parse, every 12 hours, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Screens one canonical extracted report per API call for side-effect severity and commits DB changes.
+- `.github/workflows/normalize-compounds.yml`: normalizes unresolved concurrent-compound strings one raw string per API call. It runs batches of 300 daily through `2026-07-17`, then only on Mondays, and commits `data/compound_normalizations.json` if changed.
 - `.github/workflows/pages.yml`: rebuilds the static site from SQLite and deploys to GitHub Pages.
 
 Repository setup:
@@ -255,8 +266,10 @@ Main tables:
 - `scripts/crawl_reddit.py`: slow Reddit/PullPush crawler.
 - `scripts/parse_reports.py`: one-item-per-call OpenAI parser with strict JSON validation.
 - `scripts/screen_side_effects.py`: one-report-per-call side-effect severity screener with strict JSON validation.
+- `scripts/normalize_compounds.py`: one-raw-string-per-call compound-name normalizer with strict JSON validation.
 - `scripts/build_site.py`: SQLite-to-static-site generator.
 - `prompts/extract_glp1_report.md`: extraction prompt under 3000 words.
 - `prompts/screen_side_effect_severity.md`: severity-screening prompt.
+- `prompts/normalize_compounds.md`: short compound-normalization prompt.
 - `static/app.js`, `static/styles.css`: dependency-free browser UI.
 - `config/*.json`: sources, search terms, side-effect normalization.

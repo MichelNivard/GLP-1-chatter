@@ -323,7 +323,7 @@ function renderSideEffects(data) {
   let query = "";
   let visibleReports = 18;
   let observer = null;
-  const graphEffectLimit = 56;
+  const graphEffectLimit = 24;
 
   function reportForId(id) {
     return reports[String(id)] || reports[id];
@@ -455,127 +455,170 @@ function renderSideEffects(data) {
     network.innerHTML = "";
     const nodes = graphEffects().map((item, index) => ({ ...item, index }));
     if (!nodes.length) {
-      network.setAttribute("viewBox", "0 0 900 720");
+      network.setAttribute("viewBox", "0 0 760 760");
       return;
     }
-    const width = 960;
-    const height = 760;
-    const cx = width / 2;
-    const cy = height / 2;
-    const arcRadius = 280;
-    const ribbonRadius = 218;
-    const labelRadius = 330;
+    const cell = 24;
+    const left = 158;
+    const top = 150;
+    const width = left + nodes.length * cell + 30;
+    const height = top + nodes.length * cell + 52;
     network.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
     const nodeMap = new Map(nodes.map((item) => [item.phrase, item]));
     const visibleLinks = (explorer.links || [])
       .filter((link) => nodeMap.has(link.source) && nodeMap.has(link.target))
-      .sort((a, b) => Number(a.count || 0) - Number(b.count || 0));
+      .sort((a, b) => Number(b.count || 0) - Number(a.count || 0));
     const maxLink = Math.max(1, ...visibleLinks.map((link) => Number(link.count || 0)));
-    const total = nodes.reduce((sum, item) => sum + Math.max(1, Number(item.count || 0)), 0);
-    const gap = nodes.length > 50 ? 0.018 : 0.028;
-    const usableAngle = Math.PI * 2 - gap * nodes.length;
-    const minSpan = Math.min(0.045, usableAngle / nodes.length * 0.4);
-    const weightedAngle = Math.max(0.1, usableAngle - minSpan * nodes.length);
-    let cursor = -Math.PI / 2;
-    const positions = new Map();
-
-    nodes.forEach((node) => {
-      const count = Math.max(1, Number(node.count || 0));
-      const span = minSpan + weightedAngle * (count / total);
-      const startAngle = cursor + gap / 2;
-      const endAngle = cursor + span - gap / 2;
-      const angle = (startAngle + endAngle) / 2;
-      const point = polarPoint(cx, cy, ribbonRadius, angle);
-      positions.set(node.phrase, { x: point.x, y: point.y, angle, startAngle, endAngle, span });
-      cursor += span;
-    });
-
-    network.appendChild(el("circle", { cx, cy, r: arcRadius + 28, class: "effect-ring effect-ring-outer" }));
-    network.appendChild(el("circle", { cx, cy, r: arcRadius - 20, class: "effect-ring effect-ring-inner" }));
-    network.appendChild(el("circle", { cx, cy, r: ribbonRadius - 26, class: "effect-core" }));
-
-    const edgeLayer = el("g", { class: "effect-chord-edges" });
+    const linkByPair = new Map();
     visibleLinks.forEach((link) => {
-      const source = positions.get(link.source);
-      const target = positions.get(link.target);
-      if (!source || !target) return;
-      const sourceNode = nodeMap.get(link.source);
-      const color = effectColor(sourceNode.index);
-      const active = selectedPair && selectedPair.source === link.source && selectedPair.target === link.target;
-      const touchesSelection = activeEffects().includes(link.source) || activeEffects().includes(link.target);
-      const d = `M${source.x.toFixed(2)},${source.y.toFixed(2)} C${cx.toFixed(2)},${cy.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`;
-      const strokeWidth = 0.9 + Math.sqrt(Number(link.count || 0) / maxLink) * 9;
-      const selectPair = () => {
-        selectedPair = { source: link.source, target: link.target, report_ids: link.report_ids || [] };
-        selectedEffect = link.source;
-        visibleReports = 18;
-        renderAll();
-      };
-      const path = el("path", {
-        d,
-        class: `effect-chord-edge${active ? " active" : ""}${touchesSelection ? " related" : ""}`,
-        style: `stroke:${color}`,
-        "stroke-width": strokeWidth.toFixed(2),
-      });
-      const hitPath = el("path", {
-        d,
-        class: "effect-chord-hit",
-        "stroke-width": Math.max(14, strokeWidth + 10).toFixed(2),
-        tabindex: 0,
-      });
-      hitPath.appendChild(el("title", {}, `${link.source} + ${link.target}: ${link.count} reports`));
-      hitPath.addEventListener("mouseenter", () => path.classList.add("hovered"));
-      hitPath.addEventListener("mouseleave", () => path.classList.remove("hovered"));
-      hitPath.addEventListener("click", selectPair);
-      hitPath.addEventListener("focus", selectPair);
-      edgeLayer.appendChild(path);
-      edgeLayer.appendChild(hitPath);
+      linkByPair.set([link.source, link.target].sort().join("|||"), link);
     });
-    network.appendChild(edgeLayer);
 
-    const arcLayer = el("g", { class: "effect-chord-arcs" });
-    nodes.forEach((node) => {
-      const position = positions.get(node.phrase);
-      const color = effectColor(node.index);
-      const active = activeEffects().includes(node.phrase);
-      const tier = node.index < 12 ? "major" : (node.index < 28 ? "middle" : "tail");
-      const group = el("g", {
-        class: `effect-chord-node effect-chord-node-${tier}${active ? " active" : ""}`,
-      });
-      const arc = el("path", {
-        d: arcPath(cx, cy, arcRadius, position.startAngle, position.endAngle),
-        class: `effect-chord-arc effect-chord-arc-${tier}${active ? " active" : ""}`,
-        style: `stroke:${color}`,
+    const defs = el("defs");
+    const gradient = el("linearGradient", { id: "effect-matrix-ramp-gradient", x1: "0%", y1: "0%", x2: "100%", y2: "0%" });
+    gradient.appendChild(el("stop", { offset: "0%", "stop-color": "#edf3f0" }));
+    gradient.appendChild(el("stop", { offset: "55%", "stop-color": "#83bfa8" }));
+    gradient.appendChild(el("stop", { offset: "100%", "stop-color": "#1e745f" }));
+    defs.appendChild(gradient);
+    network.appendChild(defs);
+
+    network.appendChild(el("text", {
+      x: left,
+      y: 28,
+      class: "effect-matrix-note",
+    }, "Darker cells indicate more reports mentioning both side effects."));
+
+    const shortLabel = (phrase) => {
+      if (phrase.length <= 20) return phrase;
+      return `${phrase.slice(0, 18).trim()}...`;
+    };
+
+    nodes.forEach((node, index) => {
+      const label = shortLabel(node.phrase);
+      const y = top + index * cell + cell * 0.65;
+      const rowLabel = el("text", {
+        x: left - 10,
+        y,
+        "text-anchor": "end",
+        class: `effect-matrix-label${selectedEffect === node.phrase && !selectedPair ? " active" : ""}`,
         tabindex: 0,
-      });
-      arc.appendChild(el("title", {}, `${node.phrase}: ${node.count} reports`));
-      arc.addEventListener("click", () => {
+      }, label);
+      rowLabel.appendChild(el("title", {}, `${node.phrase}: ${node.count} reports`));
+      rowLabel.addEventListener("click", () => {
         selectedEffect = node.phrase;
         selectedPair = null;
         visibleReports = 18;
         renderAll();
       });
-      arc.addEventListener("focus", () => {
+      rowLabel.addEventListener("focus", () => {
         selectedEffect = node.phrase;
         selectedPair = null;
         visibleReports = 18;
         renderAll();
       });
-      group.appendChild(arc);
+      network.appendChild(rowLabel);
 
-      const labelPosition = radialTextTransform(cx, cy, labelRadius, position.angle);
-      const label = node.phrase.length > 26 ? `${node.phrase.slice(0, 24)}...` : node.phrase;
-      group.appendChild(el("text", {
-        x: labelPosition.x.toFixed(2),
-        y: labelPosition.y.toFixed(2),
-        transform: labelPosition.transform,
-        "text-anchor": "middle",
-        class: "effect-chord-label",
-      }, label));
-      arcLayer.appendChild(group);
+      const x = left + index * cell + cell * 0.4;
+      const columnLabel = el("text", {
+        x,
+        y: top - 12,
+        transform: `rotate(-58 ${x} ${top - 12})`,
+        "text-anchor": "start",
+        class: `effect-matrix-label${selectedEffect === node.phrase && !selectedPair ? " active" : ""}`,
+        tabindex: 0,
+      }, label);
+      columnLabel.appendChild(el("title", {}, `${node.phrase}: ${node.count} reports`));
+      columnLabel.addEventListener("click", () => {
+        selectedEffect = node.phrase;
+        selectedPair = null;
+        visibleReports = 18;
+        renderAll();
+      });
+      columnLabel.addEventListener("focus", () => {
+        selectedEffect = node.phrase;
+        selectedPair = null;
+        visibleReports = 18;
+        renderAll();
+      });
+      network.appendChild(columnLabel);
     });
-    network.appendChild(arcLayer);
+
+    nodes.forEach((row, yIndex) => {
+      nodes.forEach((column, xIndex) => {
+        const x = left + xIndex * cell;
+        const y = top + yIndex * cell;
+        if (row.phrase === column.phrase) {
+          const rect = el("rect", {
+            x,
+            y,
+            width: cell,
+            height: cell,
+            rx: 3,
+            class: `effect-matrix-diagonal${selectedEffect === row.phrase && !selectedPair ? " selected" : ""}`,
+            tabindex: 0,
+          });
+          rect.appendChild(el("title", {}, `${row.phrase}: ${row.count} reports`));
+          rect.addEventListener("click", () => {
+            selectedEffect = row.phrase;
+            selectedPair = null;
+            visibleReports = 18;
+            renderAll();
+          });
+          rect.addEventListener("focus", () => {
+            selectedEffect = row.phrase;
+            selectedPair = null;
+            visibleReports = 18;
+            renderAll();
+          });
+          network.appendChild(rect);
+          return;
+        }
+        const link = linkByPair.get([row.phrase, column.phrase].sort().join("|||"));
+        if (!link) {
+          network.appendChild(el("rect", { x, y, width: cell, height: cell, rx: 3, class: "effect-matrix-empty" }));
+          return;
+        }
+        const active = selectedPair && selectedPair.source === link.source && selectedPair.target === link.target;
+        const count = Number(link.count || 0);
+        const intensity = Math.sqrt(count / maxLink);
+        const cellNode = el("rect", {
+          x,
+          y,
+          width: cell,
+          height: cell,
+          rx: 3,
+          class: `effect-matrix-cell${active ? " selected" : ""}`,
+          "data-source": link.source,
+          "data-target": link.target,
+          fill: `rgba(30, 116, 95, ${(0.15 + intensity * 0.78).toFixed(3)})`,
+          tabindex: 0,
+        });
+        cellNode.appendChild(el("title", {}, `${link.source} + ${link.target}: ${count} reports`));
+        const selectPair = () => {
+          selectedPair = { source: link.source, target: link.target, report_ids: link.report_ids || [] };
+          selectedEffect = link.source;
+          visibleReports = 18;
+          renderAll();
+        };
+        cellNode.addEventListener("click", selectPair);
+        cellNode.addEventListener("focus", selectPair);
+        network.appendChild(cellNode);
+
+        if (count >= Math.max(6, maxLink * 0.16)) {
+          network.appendChild(el("text", {
+            x: x + cell / 2,
+            y: y + cell * 0.64,
+            class: "effect-matrix-count",
+          }, count));
+        }
+      });
+    });
+
+    const legendY = height - 24;
+    network.appendChild(el("text", { x: left, y: legendY, class: "effect-matrix-legend-label" }, "Few reports"));
+    network.appendChild(el("rect", { x: left + 74, y: legendY - 10, width: 160, height: 10, rx: 5, class: "effect-matrix-ramp" }));
+    network.appendChild(el("text", { x: left + 248, y: legendY, class: "effect-matrix-legend-label" }, "Many reports"));
   }
 
   function renderDetailPanel(filteredReports) {

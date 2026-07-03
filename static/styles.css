@@ -1703,8 +1703,92 @@ dd {
 
 .effect-network {
   display: block;
-  min-height: 680px;
+  min-height: 650px;
   width: 100%;
+}
+
+.effect-matrix {
+  color-scheme: light;
+}
+
+.effect-matrix-note,
+.effect-matrix-label,
+.effect-matrix-count,
+.effect-matrix-legend-label {
+  font-family: Verdana, Geneva, sans-serif;
+  letter-spacing: 0;
+}
+
+.effect-matrix-note {
+  fill: var(--muted);
+  font-size: 11.3px;
+  font-weight: 450;
+}
+
+.effect-matrix-label {
+  cursor: pointer;
+  fill: var(--ink);
+  font-size: 9.6px;
+  font-weight: 400;
+}
+
+.effect-matrix-label:hover,
+.effect-matrix-label:focus,
+.effect-matrix-label.active {
+  fill: var(--green);
+  outline: none;
+  text-decoration: underline;
+}
+
+.effect-matrix-count {
+  fill: #fffefa;
+  font-size: 9px;
+  font-weight: 650;
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+.effect-matrix-empty,
+.effect-matrix-diagonal,
+.effect-matrix-cell {
+  stroke: #fffefa;
+  stroke-width: 1.2;
+}
+
+.effect-matrix-empty {
+  fill: #eff1ed;
+}
+
+.effect-matrix-diagonal {
+  cursor: pointer;
+  fill: #dfe7df;
+}
+
+.effect-matrix-cell {
+  cursor: pointer;
+}
+
+.effect-matrix-cell:hover,
+.effect-matrix-cell:focus,
+.effect-matrix-cell.selected,
+.effect-matrix-diagonal:hover,
+.effect-matrix-diagonal:focus,
+.effect-matrix-diagonal.selected {
+  outline: none;
+  stroke: var(--ink);
+  stroke-width: 2.1;
+}
+
+.effect-matrix-legend-label {
+  fill: var(--muted);
+  font-size: 10.5px;
+  font-weight: 450;
+}
+
+.effect-matrix-ramp {
+  fill: url("#effect-matrix-ramp-gradient");
+  stroke: var(--line);
+  stroke-width: 1;
 }
 
 .effect-detail {

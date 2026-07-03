@@ -2,12 +2,13 @@ name: Build and publish Pages site
 
 on:
   workflow_run:
-    workflows: ["Parse Reddit candidates", "Screen side-effect severity"]
+    workflows: ["Parse Reddit candidates", "Screen side-effect severity", "Normalize compound names"]
     types: [completed]
   push:
     branches: [master, main]
     paths:
       - "data/db-artifact/**"
+      - "data/compound_normalizations.json"
       - "scripts/**"
       - "static/**"
       - "trial-data/**"

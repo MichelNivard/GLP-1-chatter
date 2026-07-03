@@ -1814,7 +1814,7 @@ def render_side_effect_page(family: str, generated_at: str, explorer: dict[str, 
       </div>
       <div class="effect-network-card">
         <h2>Co-occurrence</h2>
-        <svg id="effect-network" class="effect-network" role="img" aria-label="{html.escape(name)} side-effect co-occurrence graph"></svg>
+        <svg id="effect-network" class="effect-network effect-matrix" role="img" aria-label="{html.escape(name)} side-effect co-occurrence matrix"></svg>
       </div>
       <aside id="effect-detail" class="detail-panel effect-detail" aria-live="polite">
         <h2>Effect detail</h2>
