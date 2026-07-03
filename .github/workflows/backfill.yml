@@ -90,22 +90,23 @@ jobs:
             esac
           fi
 
+          all_terms="reta,retatrutide,retaglutide,tirz,tirzepatide,mounjaro,zepbound,sema,semaglutide,ozempic,wegovy,rybelsus"
           case "$target" in
             tirz)
-              subreddits="Mounjaro,MounjaroMaintenance,MounjaroUK,Zepbound,tirzepatidecompound,compoundedtirzepatide"
-              terms="tirz,tirzepatide,mounjaro,zepbound"
+              subreddits="Mounjaro,MounjaroMaintenance,MounjaroUK,Zepbound,Tirzepatide,tirzepatidecompound,compoundedtirzepatide"
+              terms="$all_terms"
               ;;
             sema)
               subreddits="Semaglutide,SemaglutideFreeSpeech,Ozempic,OzempicForWeightLoss,WegovyWeightLoss,WegovyUK"
-              terms="sema,semaglutide,ozempic,wegovy,rybelsus"
+              terms="$all_terms"
               ;;
             reta)
               subreddits="Retatrutide,RetatrutideTrial,Peptides,GLP1,GLP1_BeforeAfter"
-              terms="reta,retatrutide,retaglutide"
+              terms="$all_terms"
               ;;
             all)
-              subreddits="Retatrutide,RetatrutideTrial,Peptides,Semaglutide,SemaglutideFreeSpeech,Ozempic,OzempicForWeightLoss,WegovyWeightLoss,WegovyUK,Mounjaro,MounjaroMaintenance,MounjaroUK,Zepbound,tirzepatidecompound,compoundedtirzepatide,GLP1,GLP1_BeforeAfter"
-              terms="reta,retatrutide,retaglutide,tirz,tirzepatide,mounjaro,zepbound,sema,semaglutide,ozempic,wegovy,rybelsus"
+              subreddits="Retatrutide,RetatrutideTrial,Peptides,Semaglutide,SemaglutideFreeSpeech,Ozempic,OzempicForWeightLoss,WegovyWeightLoss,WegovyUK,Mounjaro,MounjaroMaintenance,MounjaroUK,Zepbound,Tirzepatide,tirzepatidecompound,compoundedtirzepatide,GLP1,GLP1_BeforeAfter"
+              terms="$all_terms"
               ;;
             *)
               echo "Unknown backfill target: $target" >&2

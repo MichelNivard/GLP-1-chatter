@@ -15,7 +15,7 @@ Drug families and default search terms:
 Default subreddits are configured in `config/sources.json`. The seed list includes:
 
 - `Retatrutide`, `Peptides`, `Semaglutide`, `Ozempic`, `WegovyWeightLoss`, `Mounjaro`, `Zepbound`
-- Additional relevant communities found at project setup: `RetatrutideTrial`, `SemaglutideFreeSpeech`, `OzempicForWeightLoss`, `WegovyUK`, `MounjaroMaintenance`, `MounjaroUK`, `tirzepatidecompound`, `compoundedtirzepatide`, `GLP1`, `GLP1_BeforeAfter`
+- Additional relevant communities found at project setup: `RetatrutideTrial`, `SemaglutideFreeSpeech`, `OzempicForWeightLoss`, `WegovyUK`, `MounjaroMaintenance`, `MounjaroUK`, `Tirzepatide`, `tirzepatidecompound`, `compoundedtirzepatide`, `GLP1`, `GLP1_BeforeAfter`
 
 Edit `config/sources.json` and `config/search_terms.json` to change sources or search terms.
 
