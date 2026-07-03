@@ -23,11 +23,13 @@ Common related mappings:
 Rules:
 1. Normalize brand names to active compounds when clear.
 2. Split true combination strings into multiple compounds.
-3. Keep ordinary canonical names lowercase. Preserve established stylized names such as NAD+, BPC-157, TB-500, MOTS-c, SS-31, hCG, and GHK-Cu.
-4. Family must be one of: reta, tirz, sema, amylin, glp1_other, stimulant, diabetes_drug, hormone, peptide, supplement, other_drug, lifestyle, unclear.
-5. Return an empty compounds array for non-useful or too-vague strings, including none, n/a, unknown, not stated, appetite suppression, diet, keto, exercise, alcohol, probiotics, multivitamin, or vague "thyroid medication" without a named drug.
-6. Do not infer a compound that is not actually present.
-7. Confidence reflects string-normalization certainty only.
+3. `canonical_name` must be only the underlying drug, compound, peptide, hormone, supplement, or substance name. Do not include dose, concentration, units, route, schedule, formulation, release type, pen/vial language, or descriptive modifiers. Examples: "Humulin R U-500" -> insulin; "Adderall XR" -> amphetamine/dextroamphetamine; "4mg reta" -> retatrutide; "8 iu hgh" -> human growth hormone.
+4. Do not use broad labels such as unclear, other_drug, peptide, hormone, supplement, medication, stimulant, stack, GLP-1, or appetite suppression as `canonical_name`. If the actual compound cannot be named, return an empty compounds array.
+5. Keep ordinary canonical names lowercase. Preserve established stylized names such as NAD+, BPC-157, TB-500, MOTS-c, SS-31, hCG, and GHK-Cu.
+6. Family must be one of: reta, tirz, sema, amylin, glp1_other, stimulant, diabetes_drug, hormone, peptide, supplement, other_drug, lifestyle, unclear.
+7. Return an empty compounds array for non-useful or too-vague strings, including none, n/a, unknown, not stated, appetite suppression, diet, keto, exercise, alcohol, probiotics, multivitamin, or vague "thyroid medication" without a named drug.
+8. Do not infer a compound that is not actually present.
+9. Confidence reflects string-normalization certainty only.
 
 Output shape:
 {

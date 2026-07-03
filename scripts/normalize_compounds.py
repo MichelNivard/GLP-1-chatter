@@ -20,7 +20,7 @@ from glp1_common import DEFAULT_DB, ROOT, connect_db, ensure_schema, read_json, 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 DEFAULT_MODEL = "gpt-5.4-nano"
-NORMALIZATION_VERSION = "2026-07-03-one-by-one-v1"
+NORMALIZATION_VERSION = "2026-07-03-one-by-one-v2"
 VALID_FAMILIES = {
     "reta",
     "tirz",
@@ -35,6 +35,23 @@ VALID_FAMILIES = {
     "other_drug",
     "lifestyle",
     "unclear",
+}
+PLACEHOLDER_CANONICAL_NAMES = {
+    "unclear",
+    "unknown",
+    "other drug",
+    "other_drug",
+    "peptide",
+    "hormone",
+    "supplement",
+    "medication",
+    "medicine",
+    "drug",
+    "substance",
+    "stack",
+    "glp-1",
+    "glp1",
+    "appetite suppression",
 }
 
 
@@ -169,6 +186,8 @@ def alias_cleanup_compounds(
     for compound in compounds:
         canonical = str(compound.get("canonical_name") or "").strip()
         if not canonical:
+            continue
+        if norm_key(canonical) in PLACEHOLDER_CANONICAL_NAMES:
             continue
         mapped = normalize_with_aliases(canonical, lookup, ignore)
         candidates: list[dict[str, Any]]

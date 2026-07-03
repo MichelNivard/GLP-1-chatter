@@ -87,7 +87,7 @@
     {
       "canonical_names": ["human growth hormone"],
       "family": "hormone",
-      "aliases": ["hgh", "human growth hormone"]
+      "aliases": ["hgh", "human growth hormone", "growth hormone", "hormone growth hormone"]
     },
     {
       "canonical_names": ["hCG"],
@@ -147,7 +147,17 @@
     {
       "canonical_names": ["insulin"],
       "family": "diabetes_drug",
-      "aliases": ["insulin", "humalog", "humulin"]
+      "aliases": [
+        "insulin",
+        "humalog",
+        "humulin",
+        "humulin r",
+        "humulin r u-500",
+        "insulin regular",
+        "insulin regular u-500",
+        "regular insulin",
+        "u-500 insulin"
+      ]
     },
     {
       "canonical_names": ["Trulicity"],

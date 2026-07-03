@@ -46,6 +46,23 @@ SOCIAL_IMAGE_PATH = "assets/social-preview.png"
 ASSET_VERSION = (os.environ.get("ASSET_VERSION") or os.environ.get("GITHUB_SHA") or "local")[:12]
 
 MAX_PLOTTED_WEIGHT_GAIN_KG = 10.0
+PLACEHOLDER_CANONICAL_NAMES = {
+    "unclear",
+    "unknown",
+    "other drug",
+    "other_drug",
+    "peptide",
+    "hormone",
+    "supplement",
+    "medication",
+    "medicine",
+    "drug",
+    "substance",
+    "stack",
+    "glp-1",
+    "glp1",
+    "appetite suppression",
+}
 
 FAMILY_COPY = {
     "reta": {
@@ -1107,6 +1124,8 @@ def alias_cleanup_cached_compounds(
             continue
         key = normalize_compound_key(canonical)
         if not key or key in ignore:
+            continue
+        if key in PLACEHOLDER_CANONICAL_NAMES:
             continue
         mapped = aliases.get(key)
         candidates = mapped if mapped is not None else [compound]
