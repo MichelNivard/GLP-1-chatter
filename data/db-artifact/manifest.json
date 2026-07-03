@@ -1,16 +1,16 @@
 {
   "chunk_size": 78643200,
-  "compressed_sha256": "abc7628bdd6dcc3f5d42cf9d889c9956a00bf1f3e2ea56f68eb31065c701f30a",
-  "compressed_size": 14246778,
+  "compressed_sha256": "41ba1b45375f78ce4b0f10202ccac25fee9be19ac94dc155836d4d2828763953",
+  "compressed_size": 14471496,
   "database": "glp1_reports.sqlite3",
   "format": 1,
   "parts": [
     {
       "name": "glp1_reports.sqlite3.gz.part0001",
-      "sha256": "abc7628bdd6dcc3f5d42cf9d889c9956a00bf1f3e2ea56f68eb31065c701f30a",
-      "size": 14246778
+      "sha256": "41ba1b45375f78ce4b0f10202ccac25fee9be19ac94dc155836d4d2828763953",
+      "size": 14471496
     }
   ],
-  "uncompressed_sha256": "fe58728bc2e551bdb0b07fb82671d518ef29730f06edc8f52ce8d1659c9a78c7",
-  "uncompressed_size": 104116224
+  "uncompressed_sha256": "9dc86f0645b54a835543c110793d2a40ed9e2414490fce7a294a7f17f11020cb",
+  "uncompressed_size": 106332160
 }
