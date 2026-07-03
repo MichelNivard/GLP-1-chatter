@@ -1094,6 +1094,38 @@ def load_compound_aliases() -> tuple[dict[str, list[dict[str, Any]]], set[str]]:
     return aliases, ignore
 
 
+def alias_cleanup_cached_compounds(
+    compounds: list[dict[str, Any]],
+    aliases: dict[str, list[dict[str, Any]]],
+    ignore: set[str],
+) -> list[dict[str, Any]]:
+    cleaned: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for compound in compounds:
+        canonical = str(compound.get("canonical_name") or "").strip()
+        if not canonical:
+            continue
+        key = normalize_compound_key(canonical)
+        if not key or key in ignore:
+            continue
+        mapped = aliases.get(key)
+        candidates = mapped if mapped is not None else [compound]
+        for candidate in candidates:
+            candidate_name = str(candidate.get("canonical_name") or "").strip()
+            if not candidate_name or candidate_name in seen:
+                continue
+            seen.add(candidate_name)
+            cleaned.append(
+                {
+                    "canonical_name": candidate_name,
+                    "family": candidate.get("family") or compound.get("family") or "unclear",
+                    "confidence": compound.get("confidence", candidate.get("confidence")),
+                    "source": compound.get("source") or candidate.get("source") or "normalization_cache",
+                }
+            )
+    return cleaned
+
+
 def load_compound_normalization() -> dict[str, Any]:
     aliases, ignore = load_compound_aliases()
     exact: dict[str, list[dict[str, Any]]] = {}
@@ -1118,6 +1150,7 @@ def load_compound_normalization() -> dict[str, Any]:
                         "source": compound.get("source") or item.get("source") or "normalization_cache",
                     }
                 )
+            compounds = alias_cleanup_cached_compounds(compounds, aliases, ignore)
             exact[raw] = compounds
             normalized[normalize_compound_key(raw)] = compounds
     return {"exact": exact, "normalized": normalized, "ignore": ignore, "stats": stats}

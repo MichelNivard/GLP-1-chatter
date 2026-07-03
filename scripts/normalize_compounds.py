@@ -149,6 +149,50 @@ def normalize_with_aliases(raw: str, lookup: dict[str, list[dict[str, Any]]], ig
     return None
 
 
+def coerce_confidence(value: Any, default: float = 0.0) -> float:
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        return default
+    return min(1.0, max(0.0, confidence))
+
+
+def alias_cleanup_compounds(
+    compounds: list[dict[str, Any]],
+    lookup: dict[str, list[dict[str, Any]]],
+    ignore: set[str],
+    *,
+    source: str,
+) -> list[dict[str, Any]]:
+    cleaned: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for compound in compounds:
+        canonical = str(compound.get("canonical_name") or "").strip()
+        if not canonical:
+            continue
+        mapped = normalize_with_aliases(canonical, lookup, ignore)
+        candidates: list[dict[str, Any]]
+        if mapped is None:
+            candidates = [dict(compound)]
+        else:
+            original_confidence = coerce_confidence(compound.get("confidence"), 1.0)
+            candidates = []
+            for mapped_compound in mapped:
+                replacement = dict(mapped_compound)
+                replacement["confidence"] = min(original_confidence, coerce_confidence(mapped_compound.get("confidence"), 1.0))
+                replacement["note"] = f"alias cleanup for {canonical}"
+                replacement["source"] = f"{compound.get('source') or source}+alias"
+                candidates.append(replacement)
+
+        for candidate in candidates:
+            candidate_name = str(candidate.get("canonical_name") or "").strip()
+            if not candidate_name or candidate_name in seen:
+                continue
+            seen.add(candidate_name)
+            cleaned.append(candidate)
+    return cleaned
+
+
 def load_existing(path: Path) -> dict[str, Any]:
     if path.exists():
         return read_json(path)
@@ -159,6 +203,26 @@ def load_existing(path: Path) -> dict[str, Any]:
         "prompt_cache_key": None,
         "items": {},
     }
+
+
+def cleanup_existing_items(
+    existing: dict[str, Any],
+    lookup: dict[str, list[dict[str, Any]]],
+    ignore: set[str],
+) -> int:
+    changed = 0
+    for item in existing.get("items", {}).values():
+        source = item.get("source") or "cache"
+        original = item.get("compounds", [])
+        if not isinstance(original, list):
+            continue
+        cleaned = alias_cleanup_compounds(original, lookup, ignore, source=source)
+        if cleaned != original:
+            item["compounds"] = cleaned
+            item["alias_cleanup_version"] = NORMALIZATION_VERSION
+            item["updated_at"] = utc_now_iso()
+            changed += 1
+    return changed
 
 
 def collect_raw_names(conn: sqlite3.Connection) -> Counter[str]:
@@ -316,13 +380,21 @@ def entry(raw: str, count: int, compounds: list[dict[str, Any]], source: str) ->
     }
 
 
-def merge_items(existing: dict[str, Any], items: list[dict[str, Any]], counts: Counter[str], source: str) -> None:
+def merge_items(
+    existing: dict[str, Any],
+    items: list[dict[str, Any]],
+    counts: Counter[str],
+    source: str,
+    aliases: dict[str, list[dict[str, Any]]],
+    ignore: set[str],
+) -> None:
     store = existing.setdefault("items", {})
     for item in items:
         raw = item["raw"]
         compounds = []
         seen: set[str] = set()
-        for compound in item.get("compounds", []):
+        cleaned_item_compounds = alias_cleanup_compounds(item.get("compounds", []), aliases, ignore, source=source)
+        for compound in cleaned_item_compounds:
             canonical = str(compound.get("canonical_name") or "").strip()
             if not canonical or canonical in seen:
                 continue
@@ -331,7 +403,7 @@ def merge_items(existing: dict[str, Any], items: list[dict[str, Any]], counts: C
                 {
                     "canonical_name": canonical,
                     "family": compound.get("family") if compound.get("family") in VALID_FAMILIES else "unclear",
-                    "confidence": float(compound.get("confidence") or 0),
+                    "confidence": coerce_confidence(compound.get("confidence")),
                     "note": compound.get("note"),
                     "source": compound.get("source") or source,
                 }
@@ -368,6 +440,10 @@ def main() -> int:
     existing["prompt"] = "prompts/normalize_compounds.md"
     existing["alias_config"] = "config/compound_normalization.json"
 
+    cleanup_count = cleanup_existing_items(existing, aliases, ignore)
+    if cleanup_count:
+        print(f"alias_cleanup_items={cleanup_count}")
+
     alias_items: list[dict[str, Any]] = []
     unresolved: list[str] = []
     for raw in sorted(counts, key=lambda value: (-counts[value], norm_key(value))):
@@ -377,7 +453,7 @@ def main() -> int:
                 unresolved.append(raw)
             continue
         alias_items.append({"raw": raw, "compounds": mapped})
-    merge_items(existing, alias_items, counts, "alias")
+    merge_items(existing, alias_items, counts, "alias", aliases, ignore)
 
     if args.limit:
         unresolved = unresolved[: args.limit]
@@ -399,7 +475,7 @@ def main() -> int:
             )
             validate_result(result, raw)
             api_items.append(result)
-            merge_items(existing, [result], counts, "openai")
+            merge_items(existing, [result], counts, "openai", aliases, ignore)
             if chunk_usage:
                 usage.append(chunk_usage)
             existing["usage"] = usage
@@ -409,7 +485,7 @@ def main() -> int:
     elif unresolved:
         print(f"unresolved_without_api={len(unresolved)}")
 
-    merge_items(existing, api_items, counts, "openai")
+    merge_items(existing, api_items, counts, "openai", aliases, ignore)
     existing["usage"] = usage
     refresh_stats(existing, counts, alias_items, api_items)
 
