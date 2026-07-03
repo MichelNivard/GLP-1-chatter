@@ -79,6 +79,27 @@ FAMILY_COPY = {
     },
 }
 
+BACKFILL_GROUPS = {
+    "Retatrutide": "reta/general",
+    "RetatrutideTrial": "reta/general",
+    "Peptides": "reta/general",
+    "Semaglutide": "sema",
+    "SemaglutideFreeSpeech": "sema",
+    "Ozempic": "sema",
+    "OzempicForWeightLoss": "sema",
+    "WegovyWeightLoss": "sema",
+    "WegovyUK": "sema",
+    "Mounjaro": "tirz",
+    "MounjaroMaintenance": "tirz",
+    "MounjaroUK": "tirz",
+    "Zepbound": "tirz",
+    "Tirzepatide": "tirz",
+    "tirzepatidecompound": "tirz",
+    "compoundedtirzepatide": "tirz",
+    "GLP1": "reta/general",
+    "GLP1_BeforeAfter": "reta/general",
+}
+
 SIDE_EFFECT_MILD_QUOTES = {
     "sema": {
         "effect": "slight nausea",
@@ -553,6 +574,82 @@ def html_date(value: str | None) -> str:
     if not value:
         return "n/a"
     return html.escape(value.split("T", 1)[0])
+
+
+def html_optional_int(value: Any) -> str:
+    if value is None or value == "":
+        return "n/a"
+    return html_int(value)
+
+
+def render_methods_source_audit(data_status: dict[str, Any]) -> str:
+    sources = read_json(ROOT / "config" / "sources.json")
+    search_terms = read_json(ROOT / "config" / "search_terms.json")
+    metadata_path = ROOT / "config" / "subreddit_metadata.json"
+    metadata = read_json(metadata_path) if metadata_path.exists() else {"items": {}, "checked_at": "unknown", "note": ""}
+    archive_counts = {
+        str(row.get("subreddit", "")).lower(): row
+        for row in data_status.get("subreddit_rows", [])
+    }
+
+    term_rows = "\n".join(
+        f"""
+          <tr>
+            <td>{html.escape(FAMILY_NAMES.get(family, family))}</td>
+            <td>{html.escape(", ".join(terms))}</td>
+            <td>All listed communities, submissions and comments where available</td>
+          </tr>
+"""
+        for family, terms in search_terms.items()
+    )
+
+    source_rows = []
+    for subreddit in sources.get("subreddits", []):
+        meta = metadata.get("items", {}).get(subreddit, {})
+        archive = archive_counts.get(str(subreddit).lower(), {})
+        source_rows.append(
+            f"""
+          <tr>
+            <td><a href="https://www.reddit.com/r/{html.escape(subreddit)}/" target="_blank" rel="noopener">r/{html.escape(subreddit)}</a></td>
+            <td>{html.escape(BACKFILL_GROUPS.get(subreddit, "default"))}</td>
+            <td class="source-description">{html.escape(meta.get("description") or "Public metadata not available during the source check.")}</td>
+            <td class="num">{html_optional_int(meta.get("members"))}</td>
+            <td class="num">{html_optional_int(meta.get("active"))}</td>
+            <td class="num">{html_int(archive.get("downloaded", 0))}</td>
+          </tr>
+"""
+        )
+
+    return f"""
+      <div class="methods-source-audit">
+        <h2>Reddit Sources and Search Terms</h2>
+        <p>The crawler searches the communities below for the same full search-term list. The rotating backfill groups are a scheduling device, not a term filter: the semaglutide slice can still find tirzepatide or retatrutide switch and stack reports, and the tirzepatide or retatrutide slices can still find semaglutide history.</p>
+        <div class="methods-table-scroll">
+          <table class="methods-term-table">
+            <thead>
+              <tr><th>Drug family</th><th>Search terms</th><th>Applied to</th></tr>
+            </thead>
+            <tbody>{term_rows}</tbody>
+          </table>
+        </div>
+        <p class="methods-source-note">Public member and active-user counts were checked on {html.escape(metadata.get("checked_at", "unknown"))}. Reddit may suppress, fuzz, or change these counts, so they are rough source context only. Archive candidates are the raw posts and comments already downloaded into this project&apos;s database at build time.</p>
+        <div class="methods-table-scroll">
+          <table class="methods-source-table">
+            <thead>
+              <tr>
+                <th>Community</th>
+                <th>Backfill slice</th>
+                <th>Public description</th>
+                <th>Members</th>
+                <th>Active API</th>
+                <th>Archive candidates</th>
+              </tr>
+            </thead>
+            <tbody>{"".join(source_rows)}</tbody>
+          </table>
+        </div>
+      </div>
+"""
 
 
 def load_data_status(conn, summary: dict[str, Any]) -> dict[str, Any]:
@@ -1585,7 +1682,8 @@ def render_side_effect_choice_page(summary: dict[str, Any], generated_at: str) -
     return html_page("Side Effects", body, asset_prefix="../", page_path="side-effects/")
 
 
-def render_methods_page(generated_at: str) -> str:
+def render_methods_page(generated_at: str, data_status: dict[str, Any]) -> str:
+    source_audit = render_methods_source_audit(data_status)
     body = f"""
 <body>
   {site_header("../", active="methods")}
@@ -1599,6 +1697,7 @@ def render_methods_page(generated_at: str) -> str:
       <p>GLP-1 Chatter is not a clinical trial, a pharmacovigilance system, or medical advice. It is a public reading machine for a messy online archive. The goal is not to estimate the true average weight loss on semaglutide, tirzepatide, or retatrutide, and not to tabulate side effects as if Reddit were a registry. The goal is to surface quantitative individual stories: people self-navigating powerful medical interventions, often with limited guidance, uneven access to clinicians, and very different levels of medical supervision.</p>
       <p>That distinction matters. A number on this site is meant to stay attached to a person&apos;s account of what happened. A dot on a chart should lead back to the post that produced it. A side-effect count should be read with the original language nearby. The site tries to quantify without stripping away context, because the context is often the point: people are describing fear, experimentation, relief, confusion, dose changes, plateaus, side effects, and improvised care in public.</p>
       <p>The source material is found by a slow Reddit crawler. It searches selected communities for drug names, brand names, and common shorthand: retatrutide, reta, and retaglutide; tirzepatide, tirz, Mounjaro, and Zepbound; semaglutide, sema, Ozempic, Wegovy, and Rybelsus. When a candidate post or comment is found, the database keeps the subreddit, date, title, body, matched terms, URL, and original full text.</p>
+      {source_audit}
       <p>Each post or comment is then read one at a time. The language model is not asked to summarize a batch or infer a population trend. It receives a single Reddit item and returns structured fields: the drug family, the drug name mentioned, dose narrative, duration, starting and current weight, reported loss, side effects, attribution, confidence, and a short evidence note. The system marks processed post IDs so routine changes in database metadata do not trigger unnecessary rereading.</p>
       <p>The extraction prompt is deliberately suspicious. Reddit shorthand can be treacherous: SW means starting weight, CW means current weight, and GW usually means goal weight, not weight lost. A milligram dose is not body weight. Age is not duration. A pregnancy high weight, a prior Ozempic run, a switch from semaglutide to retatrutide, or a whole lifetime GLP-1 journey should not be credited to the focal drug unless the post clearly says so.</p>
       <p>The model extracts raw values and units; code does the arithmetic. Pounds and stone are converted to kilograms, durations are converted to days and weeks, and missing values are filled in only when the relationship is clear. Goal weight is never treated as current weight. Weight loss is plotted as negative weight change, so losing 10 kg appears as -10 kg. The display caps visible weight gain at +10 kg so a likely misread or exceptional outlier does not stretch the whole chart.</p>
@@ -2032,7 +2131,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     (effects_dir / "index.html").write_text(render_side_effect_choice_page(summary, generated_at), encoding="utf-8")
     methods_dir = site_dir / "methods"
     methods_dir.mkdir(parents=True, exist_ok=True)
-    (methods_dir / "index.html").write_text(render_methods_page(generated_at), encoding="utf-8")
+    (methods_dir / "index.html").write_text(render_methods_page(generated_at, data_status), encoding="utf-8")
     status_dir = site_dir / "data-status"
     status_dir.mkdir(parents=True, exist_ok=True)
     (status_dir / "index.html").write_text(render_data_status_page(summary, data_status, generated_at), encoding="utf-8")

@@ -1,0 +1,96 @@
+{
+  "checked_at": "2026-07-03",
+  "note": "Public Reddit page metadata. Subscriber and active-user counts are volatile, may be suppressed or fuzzed by Reddit, and are included only to give rough source context.",
+  "items": {
+    "Retatrutide": {
+      "members": 139067,
+      "active": 5,
+      "description": "Development and user discussion around GIP/GLP-1/glucagon agonism."
+    },
+    "RetatrutideTrial": {
+      "members": 6586,
+      "active": 2,
+      "description": "Retatrutide trial discussion, sharing experiences and questions around a triple incretin agonist."
+    },
+    "Peptides": {
+      "members": 164286,
+      "active": 4,
+      "description": "Broad peptide discussion, including compounds, effects and dosing."
+    },
+    "Semaglutide": {
+      "members": 196375,
+      "active": 4,
+      "description": "FDA-approved semaglutide discussion, including Wegovy, Ozempic and Rybelsus."
+    },
+    "SemaglutideFreeSpeech": {
+      "members": 22116,
+      "active": 2,
+      "description": "Open discussion about semaglutide and similar compounds."
+    },
+    "Ozempic": {
+      "members": 142724,
+      "active": 0,
+      "description": "Questions, answers and accomplishments around Ozempic."
+    },
+    "OzempicForWeightLoss": {
+      "members": 40764,
+      "active": 4,
+      "description": "Support community for Ozempic and semaglutide weight-loss use."
+    },
+    "WegovyWeightLoss": {
+      "members": 130720,
+      "active": 1,
+      "description": "Unofficial Wegovy and GLP-1 weight-loss community."
+    },
+    "WegovyUK": {
+      "members": 9157,
+      "active": 0,
+      "description": "UK Wegovy discussion, support and progress."
+    },
+    "Mounjaro": {
+      "members": 191673,
+      "active": 5,
+      "description": "Questions, experiences and accomplishments around Mounjaro and Zepbound prescriptions."
+    },
+    "MounjaroMaintenance": {
+      "members": 21211,
+      "active": 5,
+      "description": "Maintenance-phase community for GLP-1 users."
+    },
+    "MounjaroUK": {
+      "members": 53669,
+      "active": 4,
+      "description": "UK and Ireland Mounjaro, Wegovy and other GLP-1 discussion and support."
+    },
+    "Zepbound": {
+      "members": 211776,
+      "active": 4,
+      "description": "Questions, experiences, tips and weight-loss support around Zepbound."
+    },
+    "Tirzepatide": {
+      "members": null,
+      "active": null,
+      "description": "Plain tirzepatide subreddit target added after source audit; public metadata was not accessible during the check."
+    },
+    "tirzepatidecompound": {
+      "members": 165587,
+      "active": 1,
+      "description": "Large tirzepatide community discussing Rx tirzepatide and other GLP-1s, including compound-related language."
+    },
+    "compoundedtirzepatide": {
+      "members": 43353,
+      "active": 3,
+      "description": "Focused on prescription compounded tirzepatide experiences."
+    },
+    "GLP1": {
+      "members": 34410,
+      "active": 2,
+      "description": "Broad GLP-1 agonist community covering Wegovy, Ozempic, Mounjaro, Zepbound and related drugs."
+    },
+    "GLP1_BeforeAfter": {
+      "members": null,
+      "active": null,
+      "description": "Before and after GLP-1 progress posts; public page was visible, but about metadata was not available during the check."
+    }
+  }
+}

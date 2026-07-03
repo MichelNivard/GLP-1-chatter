@@ -140,6 +140,46 @@ a {
   margin-bottom: 0;
 }
 
+.methods-source-audit {
+  margin: 1.8rem 0 2rem;
+}
+
+.methods-source-audit h2 {
+  margin: 2rem 0 0.55rem;
+}
+
+.methods-table-scroll {
+  overflow-x: auto;
+  margin: 0.9rem 0 1.25rem;
+}
+
+.methods-term-table {
+  max-width: 940px;
+}
+
+.methods-source-table {
+  min-width: 980px;
+  font-size: 0.92rem;
+}
+
+.methods-source-table td,
+.methods-source-table th,
+.methods-term-table td,
+.methods-term-table th {
+  vertical-align: top;
+}
+
+.methods-source-table .source-description {
+  max-width: 360px;
+  color: #3f463e;
+}
+
+.page-copy .methods-source-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
 .side-effect-page-copy {
   max-width: 1040px;
 }
