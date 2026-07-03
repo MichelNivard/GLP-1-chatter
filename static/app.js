@@ -974,7 +974,7 @@ function renderNormalizationAudit(data) {
   const audit = document.getElementById("normalization-audit");
   if (!audit) return;
   const stats = data.normalization?.stats || {};
-  const unresolved = data.normalization?.unresolved_terms || [];
+  const excluded = data.normalization?.excluded_terms || data.normalization?.unresolved_terms || [];
   audit.innerHTML = `
     <div>
       <h3>Normalization source</h3>
@@ -987,14 +987,15 @@ function renderNormalizationAudit(data) {
       </dl>
     </div>
     <div>
-      <h3>Top unresolved terms</h3>
+      <h3>Excluded or non-compound terms</h3>
+      <p class="fine-print">These are raw strings found in posts that do not become matrix nodes, for example vague classes, supplies, lifestyle words, or intentionally ignored terms.</p>
       ${
-        unresolved.length
-          ? `<table><thead><tr><th>Raw term</th><th>Count</th></tr></thead><tbody>${unresolved
+        excluded.length
+          ? `<table><thead><tr><th>Raw term</th><th>Count</th></tr></thead><tbody>${excluded
               .slice(0, 20)
               .map((item) => `<tr><td>${htmlEscape(item.raw)}</td><td>${item.count}</td></tr>`)
               .join("")}</tbody></table>`
-          : "<p>No unresolved terms in rendered graph data.</p>"
+          : "<p>No excluded terms in rendered graph data.</p>"
       }
     </div>
   `;

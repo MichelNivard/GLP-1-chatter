@@ -1227,7 +1227,7 @@ def build_concurrent_payload(rows: list[Any], generated_at: str) -> dict[str, An
     nodes: dict[str, dict[str, Any]] = {}
     link_map: dict[tuple[str, str], dict[str, Any]] = {}
     report_lookup: dict[int, dict[str, Any]] = {}
-    unresolved_counter: Counter[str] = Counter()
+    excluded_counter: Counter[str] = Counter()
 
     def add_node(compound: dict[str, Any], report_id: int, is_stack: bool) -> None:
         name = compound["canonical_name"]
@@ -1281,7 +1281,7 @@ def build_concurrent_payload(rows: list[Any], generated_at: str) -> dict[str, An
         for raw in raw_others:
             normalized = normalize_compound(raw, normalization)
             if not normalized:
-                unresolved_counter[raw] += 1
+                excluded_counter[raw] += 1
             compounds.extend(normalized)
 
         unique: dict[str, dict[str, Any]] = {}
@@ -1340,9 +1340,9 @@ def build_concurrent_payload(rows: list[Any], generated_at: str) -> dict[str, An
         "reports": report_lookup,
         "normalization": {
             "stats": normalization["stats"],
-            "unresolved_terms": [
+            "excluded_terms": [
                 {"raw": raw, "count": count}
-                for raw, count in unresolved_counter.most_common(40)
+                for raw, count in excluded_counter.most_common(40)
             ],
         },
         "summary": {
@@ -1940,7 +1940,7 @@ def render_concurrent_page(generated_at: str, summary: dict[str, Any]) -> str:
     </section>
     <section class="table-section">
       <h2>Normalization audit</h2>
-      <p>Compound names use <code>config/compound_normalization.json</code> plus optional cached nano normalization in <code>data/compound_normalizations.json</code>.</p>
+      <p>Compound names use <code>config/compound_normalization.json</code> plus optional cached nano normalization in <code>data/compound_normalizations.json</code>. The queue count tracks raw names still waiting for normalization; excluded terms are strings seen in reports that do not become graph nodes.</p>
       <div id="normalization-audit" class="audit-grid"></div>
     </section>
   </main>
