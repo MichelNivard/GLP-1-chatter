@@ -24,6 +24,7 @@ Edit `config/sources.json` and `config/search_terms.json` to change sources or s
 Requires Python 3.12 or compatible Python 3. No third-party Python package is required.
 
 ```bash
+python scripts/db_artifact.py unpack --if-present
 python scripts/init_db.py
 python scripts/build_site.py
 python -m http.server 8000 --directory site
@@ -87,6 +88,8 @@ Useful flags:
 - `--prompt-cache-retention 24h`
 
 The parser sends exactly one Reddit post/comment per OpenAI API call. It uses a stable prompt prefix plus a varying per-post user message, and sets `prompt_cache_key` so repeated calls can benefit from OpenAI prompt caching. Cached-token usage is stored in `parse_cache` when returned by the API.
+
+Automated parse runs are intentionally batched rather than unbounded. API calls are the expensive step, and GitHub Actions only publishes the database at the end of a successful run. Keeping scheduled/backfill-triggered runs to smaller batches reduces the amount of work at risk if GitHub has a transient failure.
 
 ## Local Side-Effect Severity Screening
 
@@ -226,9 +229,18 @@ Repository setup:
 
 The workflow commit pattern follows the general GitHub Actions approach of running a script, checking for changed files, committing, and pushing from the action.
 
+The raw SQLite database is not committed directly once it approaches GitHub's 100 MB per-file limit. Instead, workflows restore it from `data/db-artifact/`, run crawl/parse/screen/build steps, then compact, gzip, and split it back into Git-friendly chunks:
+
+```bash
+python scripts/db_artifact.py unpack --if-present
+python scripts/db_artifact.py pack
+```
+
+Parse and side-effect screening workflows also upload the packed database as a short-lived recovery artifact, so if a later push or deploy step fails, the expensive LLM work is not necessarily lost.
+
 ## Database Schema Overview
 
-SQLite path: `data/glp1_reports.sqlite3`.
+SQLite path after unpacking: `data/glp1_reports.sqlite3`.
 
 Main tables:
 

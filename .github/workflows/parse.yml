@@ -52,6 +52,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore database artifact
+        run: python scripts/db_artifact.py unpack --if-present
       - name: Initialize database
         run: python scripts/init_db.py
       - name: Parse pending candidates one item per API call
@@ -63,10 +65,10 @@ jobs:
           event_name="${{ github.event_name }}"
           source_workflow="${{ github.event.workflow_run.name || '' }}"
           if [ "$event_name" = "schedule" ]; then
-            parse_limit="0"
+            parse_limit="100"
           fi
           if [ "$event_name" = "workflow_run" ] && [ "$source_workflow" = "Backfill Reddit catalog" ]; then
-            parse_limit="0"
+            parse_limit="100"
           fi
           args=(
             --limit "$parse_limit"
@@ -90,11 +92,21 @@ jobs:
             )
           fi
           python scripts/parse_reports.py "${args[@]}"
+      - name: Pack database artifact
+        if: always()
+        run: python scripts/db_artifact.py pack
+      - name: Upload database recovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glp1-db-parse-${{ github.run_id }}
+          path: data/db-artifact/
+          retention-days: 14
       - name: Commit parsed database
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/glp1_reports.sqlite3
+          git add data/db-artifact
           if git diff --cached --quiet; then
             echo "No parsed database changes to commit."
           else

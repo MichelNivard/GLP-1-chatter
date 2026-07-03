@@ -34,6 +34,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore database artifact
+        run: python scripts/db_artifact.py unpack --if-present
       - name: Initialize database
         run: python scripts/init_db.py
       - name: Screen side-effect severity one report per API call
@@ -42,6 +44,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           screen_limit="${{ github.event.inputs.limit || '0' }}"
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_run" ]; then
+            screen_limit="200"
+          fi
           args=(
             --limit "$screen_limit"
             --model gpt-5.4-nano
@@ -51,11 +56,21 @@ jobs:
             args+=(--retry-errors)
           fi
           python scripts/screen_side_effects.py "${args[@]}"
+      - name: Pack database artifact
+        if: always()
+        run: python scripts/db_artifact.py pack
+      - name: Upload database recovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glp1-db-side-effects-${{ github.run_id }}
+          path: data/db-artifact/
+          retention-days: 14
       - name: Commit screened database
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/glp1_reports.sqlite3
+          git add data/db-artifact
           if git diff --cached --quiet; then
             echo "No side-effect screening changes to commit."
           else

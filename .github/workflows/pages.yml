@@ -7,7 +7,7 @@ on:
   push:
     branches: [master, main]
     paths:
-      - "data/glp1_reports.sqlite3"
+      - "data/db-artifact/**"
       - "scripts/**"
       - "static/**"
       - "trial-data/**"
@@ -32,6 +32,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore database artifact
+        run: python scripts/db_artifact.py unpack --if-present
       - name: Build static site
         run: python scripts/build_site.py
       - uses: actions/configure-pages@v5

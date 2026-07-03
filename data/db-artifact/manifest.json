@@ -1,0 +1,16 @@
+{
+  "chunk_size": 78643200,
+  "compressed_sha256": "8c47dcca8468c3f3a07ff437fa1d02ee9aeff17aac27e4a77824242104ce467d",
+  "compressed_size": 14050112,
+  "database": "glp1_reports.sqlite3",
+  "format": 1,
+  "parts": [
+    {
+      "name": "glp1_reports.sqlite3.gz.part0001",
+      "sha256": "8c47dcca8468c3f3a07ff437fa1d02ee9aeff17aac27e4a77824242104ce467d",
+      "size": 14050112
+    }
+  ],
+  "uncompressed_sha256": "91123a01320bbee4b9b902569038ece26d75f31e4bbb4c1e8a5b6373d6ef6eff",
+  "uncompressed_size": 101699584
+}
