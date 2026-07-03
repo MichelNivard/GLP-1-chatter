@@ -15,7 +15,7 @@ on:
       limit:
         description: "Maximum posts/comments to parse"
         required: false
-        default: "50"
+        default: "300"
       retry_errors:
         description: "Retry rows previously marked error"
         required: false
@@ -65,10 +65,10 @@ jobs:
           event_name="${{ github.event_name }}"
           source_workflow="${{ github.event.workflow_run.name || '' }}"
           if [ "$event_name" = "schedule" ]; then
-            parse_limit="100"
+            parse_limit="300"
           fi
           if [ "$event_name" = "workflow_run" ] && [ "$source_workflow" = "Backfill Reddit catalog" ]; then
-            parse_limit="100"
+            parse_limit="300"
           fi
           args=(
             --limit "$parse_limit"

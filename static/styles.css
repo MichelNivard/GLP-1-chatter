@@ -827,6 +827,70 @@ p {
   margin-bottom: 0;
 }
 
+.status-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  padding: 1rem 0 1.6rem;
+}
+
+.status-card {
+  border-top: 3px solid var(--green);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+}
+
+.status-card span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-card strong {
+  color: var(--ink);
+  font-size: 2.25rem;
+  line-height: 1;
+}
+
+.status-card p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.data-status-copy {
+  margin-bottom: 1rem;
+}
+
+.data-status-section {
+  overflow-x: auto;
+}
+
+.data-status-section h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  margin-bottom: 0.35rem;
+}
+
+.table-note {
+  color: var(--muted);
+  font-size: 0.94rem;
+  margin-top: 0;
+}
+
+td.num,
+th.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;
@@ -1984,6 +2048,10 @@ th {
   .effect-feed {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .status-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 940px) {
@@ -2093,6 +2161,10 @@ th {
   .summary-card dl div,
   .detail-list div,
   .bar-row {
+    grid-template-columns: 1fr;
+  }
+
+  .status-card-grid {
     grid-template-columns: 1fr;
   }
 }

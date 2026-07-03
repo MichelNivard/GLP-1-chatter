@@ -510,6 +510,217 @@ def load_parsed_post_counts(conn) -> dict[str, int]:
     return {row["drug_family"]: int(row["n"]) for row in rows}
 
 
+def count_one(conn, query: str, params: tuple[Any, ...] = ()) -> int:
+    row = conn.execute(query, params).fetchone()
+    if row is None:
+        return 0
+    value = row[0]
+    return int(value or 0)
+
+
+def status_count_map(conn, query: str) -> dict[str, int]:
+    return {
+        str(row[0] or "unknown"): int(row[1] or 0)
+        for row in conn.execute(query).fetchall()
+    }
+
+
+def html_int(value: Any) -> str:
+    try:
+        return f"{int(value or 0):,}"
+    except (TypeError, ValueError):
+        return "0"
+
+
+def html_date(value: str | None) -> str:
+    if not value:
+        return "n/a"
+    return html.escape(value.split("T", 1)[0])
+
+
+def load_data_status(conn, summary: dict[str, Any]) -> dict[str, Any]:
+    parse_counts = status_count_map(
+        conn,
+        """
+        SELECT parse_status, COUNT(*)
+        FROM raw_posts
+        GROUP BY parse_status
+        """,
+    )
+    source_counts = status_count_map(
+        conn,
+        """
+        SELECT source_type, COUNT(*)
+        FROM raw_posts
+        GROUP BY source_type
+        """,
+    )
+    rescreen_counts = status_count_map(
+        conn,
+        """
+        SELECT rescreen_status, COUNT(*)
+        FROM raw_posts
+        GROUP BY rescreen_status
+        """,
+    )
+    total_raw = count_one(conn, "SELECT COUNT(*) FROM raw_posts")
+    canonical_reports = count_one(
+        conn,
+        """
+        SELECT COUNT(*)
+        FROM extracted_reports r
+        JOIN raw_posts p ON p.post_id = r.post_id
+        WHERE r.canonical = 1
+          AND p.parse_status = 'parsed'
+        """,
+    )
+    plottable_reports = sum(
+        int(summary["families"].get(family, {}).get("plottable_reports") or 0)
+        for family in DRUG_FAMILIES
+    )
+    changed_after_processing = count_one(
+        conn,
+        """
+        SELECT COUNT(*)
+        FROM raw_posts
+        WHERE content_changed_after_processing = 1
+        """,
+    )
+
+    family_counters: dict[str, Counter[str]] = {
+        family: Counter() for family in DRUG_FAMILIES
+    }
+    multi_family_candidates = 0
+    for row in conn.execute(
+        """
+        SELECT matched_drug_families, parse_status
+        FROM raw_posts
+        """
+    ).fetchall():
+        families = [
+            family
+            for family in row_json(row, "matched_drug_families", [])
+            if family in family_counters
+        ]
+        if len(set(families)) > 1:
+            multi_family_candidates += 1
+        for family in set(families):
+            family_counters[family]["downloaded"] += 1
+            family_counters[family][row["parse_status"]] += 1
+
+    family_rows = []
+    for family in DRUG_FAMILIES:
+        counts = family_counters[family]
+        family_rows.append(
+            {
+                "family": family,
+                "name": FAMILY_NAMES[family],
+                "downloaded": counts["downloaded"],
+                "parsed": counts["parsed"],
+                "pending": counts["pending"],
+                "error": counts["error"],
+                "extracted_reports": summary["families"].get(family, {}).get("parsed_posts") or 0,
+                "plottable_reports": summary["families"].get(family, {}).get("plottable_reports") or 0,
+            }
+        )
+
+    subreddit_rows = [
+        {
+            "subreddit": row["subreddit"] or "unknown",
+            "downloaded": int(row["downloaded"] or 0),
+            "submissions": int(row["submissions"] or 0),
+            "comments": int(row["comments"] or 0),
+            "parsed": int(row["parsed"] or 0),
+            "pending": int(row["pending"] or 0),
+            "error": int(row["error"] or 0),
+            "first_post": row["first_post"],
+            "latest_post": row["latest_post"],
+        }
+        for row in conn.execute(
+            """
+            SELECT
+              subreddit,
+              COUNT(*) AS downloaded,
+              SUM(CASE WHEN source_type = 'submission' THEN 1 ELSE 0 END) AS submissions,
+              SUM(CASE WHEN source_type = 'comment' THEN 1 ELSE 0 END) AS comments,
+              SUM(CASE WHEN parse_status = 'parsed' THEN 1 ELSE 0 END) AS parsed,
+              SUM(CASE WHEN parse_status = 'pending' THEN 1 ELSE 0 END) AS pending,
+              SUM(CASE WHEN parse_status = 'error' THEN 1 ELSE 0 END) AS error,
+              MIN(created_iso) AS first_post,
+              MAX(created_iso) AS latest_post
+            FROM raw_posts
+            GROUP BY subreddit
+            ORDER BY downloaded DESC, subreddit
+            """
+        ).fetchall()
+    ]
+
+    crawl_rows = [
+        {
+            "subreddit": row["subreddit"] or "unknown",
+            "source_type": row["source_type"],
+            "window_kind": row["window_kind"],
+            "searches": int(row["searches"] or 0),
+            "pages_fetched": int(row["pages_fetched"] or 0),
+            "exhausted": int(row["exhausted"] or 0),
+            "last_error_count": int(row["last_error_count"] or 0),
+            "last_updated": row["last_updated"],
+        }
+        for row in conn.execute(
+            """
+            SELECT
+              subreddit,
+              source_type,
+              window_kind,
+              COUNT(*) AS searches,
+              SUM(pages_fetched) AS pages_fetched,
+              SUM(CASE WHEN exhausted = 1 THEN 1 ELSE 0 END) AS exhausted,
+              SUM(consecutive_errors) AS last_error_count,
+              MAX(updated_at) AS last_updated
+            FROM crawl_state
+            GROUP BY subreddit, source_type, window_kind
+            ORDER BY subreddit, window_kind, source_type
+            """
+        ).fetchall()
+    ]
+
+    side_effect_status = Counter()
+    for row in conn.execute(
+        """
+        SELECT r.report_id, r.side_effects, run.status
+        FROM extracted_reports r
+        JOIN raw_posts p ON p.post_id = r.post_id
+        LEFT JOIN side_effect_screening_runs run ON run.report_id = r.report_id
+        WHERE r.canonical = 1
+          AND p.parse_status = 'parsed'
+        """
+    ).fetchall():
+        if not row_json(row, "side_effects", []):
+            continue
+        side_effect_status["with_side_effects"] += 1
+        side_effect_status[row["status"] or "unscreened"] += 1
+
+    return {
+        "totals": {
+            "downloaded": total_raw,
+            "submissions": source_counts.get("submission", 0),
+            "comments": source_counts.get("comment", 0),
+            "parsed": parse_counts.get("parsed", 0),
+            "pending": parse_counts.get("pending", 0),
+            "error": parse_counts.get("error", 0),
+            "canonical_reports": canonical_reports,
+            "plottable_reports": plottable_reports,
+            "changed_after_processing": changed_after_processing,
+            "multi_family_candidates": multi_family_candidates,
+        },
+        "rescreen": rescreen_counts,
+        "side_effects": dict(side_effect_status),
+        "family_rows": family_rows,
+        "subreddit_rows": subreddit_rows,
+        "crawl_rows": crawl_rows,
+    }
+
+
 def report_point(row: Any) -> dict[str, Any]:
     side_effects = row_json(row, "side_effects", [])
     other_compounds = row_json(row, "other_compounds_concurrent", [])
@@ -1351,18 +1562,91 @@ def render_methods_page(generated_at: str) -> str:
     return html_page("Methods", body, asset_prefix="../", page_path="methods/")
 
 
-def render_data_status_page(summary: dict[str, Any], generated_at: str) -> str:
-    rows = []
+def render_data_status_page(summary: dict[str, Any], data_status: dict[str, Any], generated_at: str) -> str:
+    totals = data_status["totals"]
+    rescreen = data_status["rescreen"]
+    side_effects = data_status["side_effects"]
+
+    status_cards = [
+        ("Downloaded candidates", totals["downloaded"], "Raw Reddit posts and comments saved in SQLite."),
+        ("Parsed", totals["parsed"], "Candidates already read by the extraction model."),
+        ("Still in queue", totals["pending"], "Candidates waiting for the next parse job."),
+        ("Parse errors", totals["error"], "Rows that need retry or manual inspection."),
+        ("Extracted reports", totals["canonical_reports"], "Canonical drug reports pulled from parsed items."),
+        ("Plottable reports", totals["plottable_reports"], "Reports that pass duration and attribution filters."),
+        ("Submissions", totals["submissions"], "Original Reddit posts."),
+        ("Comments", totals["comments"], "Reddit comments matching the search terms."),
+    ]
+    status_cards_html = "\n".join(
+        f"""
+        <article class="status-card">
+          <span>{html.escape(label)}</span>
+          <strong>{html_int(value)}</strong>
+          <p>{html.escape(note)}</p>
+        </article>
+"""
+        for label, value, note in status_cards
+    )
+
+    family_rows = "\n".join(
+        f"""
+        <tr>
+          <td>{html.escape(row["name"])}</td>
+          <td class="num">{html_int(row["downloaded"])}</td>
+          <td class="num">{html_int(row["parsed"])}</td>
+          <td class="num">{html_int(row["pending"])}</td>
+          <td class="num">{html_int(row["error"])}</td>
+          <td class="num">{html_int(row["extracted_reports"])}</td>
+          <td class="num">{html_int(row["plottable_reports"])}</td>
+        </tr>
+"""
+        for row in data_status["family_rows"]
+    )
+
+    subreddit_rows = "\n".join(
+        f"""
+        <tr>
+          <td>{html.escape(row["subreddit"])}</td>
+          <td class="num">{html_int(row["downloaded"])}</td>
+          <td class="num">{html_int(row["submissions"])}</td>
+          <td class="num">{html_int(row["comments"])}</td>
+          <td class="num">{html_int(row["parsed"])}</td>
+          <td class="num">{html_int(row["pending"])}</td>
+          <td class="num">{html_int(row["error"])}</td>
+          <td>{html_date(row["first_post"])}</td>
+          <td>{html_date(row["latest_post"])}</td>
+        </tr>
+"""
+        for row in data_status["subreddit_rows"]
+    )
+
+    crawl_rows = "\n".join(
+        f"""
+        <tr>
+          <td>{html.escape(row["subreddit"])}</td>
+          <td>{html.escape(row["source_type"])}</td>
+          <td>{html.escape(row["window_kind"])}</td>
+          <td class="num">{html_int(row["searches"])}</td>
+          <td class="num">{html_int(row["pages_fetched"])}</td>
+          <td class="num">{html_int(row["exhausted"])}</td>
+          <td class="num">{html_int(row["last_error_count"])}</td>
+          <td>{html.escape(row["last_updated"] or "n/a")}</td>
+        </tr>
+"""
+        for row in data_status["crawl_rows"]
+    )
+
+    drug_summary_rows = []
     for family in DRUG_FAMILIES:
         item = summary["families"][family]
-        rows.append(
+        drug_summary_rows.append(
             f"""
         <tr>
           <td>{html.escape(FAMILY_NAMES[family])}</td>
-          <td>{item["parsed_posts"]}</td>
-          <td>{item["plottable_reports"]}</td>
-          <td>{fmt_number(item["median_duration_weeks"])} weeks</td>
-          <td>{fmt_number(item["median_weight_change_kg"])} kg</td>
+          <td class="num">{html_int(item["parsed_posts"])}</td>
+          <td class="num">{html_int(item["plottable_reports"])}</td>
+          <td class="num">{fmt_number(item["median_duration_weeks"])} weeks</td>
+          <td class="num">{fmt_number(item["median_weight_change_kg"])} kg</td>
         </tr>
 """
         )
@@ -1373,13 +1657,45 @@ def render_data_status_page(summary: dict[str, Any], generated_at: str) -> str:
     <section class="page-heading">
       <p class="eyebrow">Data Status</p>
       <h1>Current generated dataset.</h1>
-      <p>GitHub Actions crawls Reddit candidates, parses pending items, rescreens flagged reports, rebuilds the static JSON bundles, and publishes the Pages site. Counts below reflect the SQLite database at build time.</p>
+      <p>GitHub Actions crawls Reddit candidates, parses pending items, rescreens flagged reports, rebuilds the static JSON bundles, and publishes the Pages site. Counts below reflect the SQLite database at build time, including the backlog still waiting for OpenAI extraction.</p>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
-    <section class="table-section">
+    <section class="status-card-grid" aria-label="Dataset totals">
+      {status_cards_html}
+    </section>
+    <section class="page-copy data-status-copy">
+      <p>The queue is intentionally visible. A candidate enters the database when the crawler finds a Reddit post or comment matching a drug name, brand name, or shorthand term. It becomes parsed only after the one-item LLM pass has read it and written structured reports. A single candidate can mention more than one drug family, so family-level counts do not have to add up to the downloaded total.</p>
+      <p>At build time, {html_int(totals["pending"])} candidates are still waiting for parsing. {html_int(rescreen.get("pending", 0))} parsed posts are waiting for a stronger rescreen, and {html_int(side_effects.get("unscreened", 0))} reports with side-effect phrases are waiting for the side-effect severity pass.</p>
+    </section>
+    <section class="table-section data-status-section">
+      <h2>Drug-family parse queue</h2>
+      <p class="table-note">These counts come from matched Reddit search terms. One post can match more than one family.</p>
+      <table>
+        <thead><tr><th>Matched family</th><th>Downloaded</th><th>Parsed</th><th>Pending</th><th>Errors</th><th>Reports found</th><th>Plottable</th></tr></thead>
+        <tbody>{family_rows}</tbody>
+      </table>
+    </section>
+    <section class="table-section data-status-section">
+      <h2>Downloaded Reddit sources</h2>
+      <p class="table-note">Raw candidates by subreddit, split into submissions and comments, with parse queue state.</p>
+      <table>
+        <thead><tr><th>Subreddit</th><th>Downloaded</th><th>Posts</th><th>Comments</th><th>Parsed</th><th>Pending</th><th>Errors</th><th>Oldest</th><th>Newest</th></tr></thead>
+        <tbody>{subreddit_rows}</tbody>
+      </table>
+    </section>
+    <section class="table-section data-status-section">
+      <h2>Weight-change plot summary</h2>
       <table>
         <thead><tr><th>Drug family</th><th>Parsed posts</th><th>Plottable reports</th><th>Median duration</th><th>Median change</th></tr></thead>
-        <tbody>{''.join(rows)}</tbody>
+        <tbody>{''.join(drug_summary_rows)}</tbody>
+      </table>
+    </section>
+    <section class="table-section data-status-section">
+      <h2>Crawler page progress</h2>
+      <p class="table-note">Each search combination tracks how many source pages have been fetched, whether it is exhausted, and whether recent errors were recorded.</p>
+      <table>
+        <thead><tr><th>Subreddit</th><th>Type</th><th>Window</th><th>Searches</th><th>Pages fetched</th><th>Exhausted</th><th>Recent errors</th><th>Updated</th></tr></thead>
+        <tbody>{crawl_rows}</tbody>
       </table>
     </section>
   </main>
@@ -1581,7 +1897,6 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     reports = load_reports(conn)
     side_effect_screenings = load_side_effect_screenings(conn)
     parsed_counts = load_parsed_post_counts(conn)
-    conn.close()
 
     mapping = load_side_effect_normalization()
     reports_by_family: dict[str, list[Any]] = defaultdict(list)
@@ -1619,8 +1934,11 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
             "most_common_side_effects": effects[:5],
         }
 
+    data_status = load_data_status(conn, summary)
+    conn.close()
+
     if dry_run:
-        return {**summary, "concurrent": concurrent_payload["summary"]}
+        return {**summary, "concurrent": concurrent_payload["summary"], "data_status": data_status}
 
     if site_dir.exists():
         shutil.rmtree(site_dir)
@@ -1658,7 +1976,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
     (methods_dir / "index.html").write_text(render_methods_page(generated_at), encoding="utf-8")
     status_dir = site_dir / "data-status"
     status_dir.mkdir(parents=True, exist_ok=True)
-    (status_dir / "index.html").write_text(render_data_status_page(summary, generated_at), encoding="utf-8")
+    (status_dir / "index.html").write_text(render_data_status_page(summary, data_status, generated_at), encoding="utf-8")
     (site_dir / "index.html").write_text(render_home(summary, generated_at, family_payloads), encoding="utf-8")
     return summary
 
