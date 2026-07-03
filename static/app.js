@@ -30,10 +30,21 @@ const FAMILY_NAMES = {
   sema: "Semaglutide",
 };
 
+const COMPOUND_LABEL_OVERRIDES = {
+  "amphetamine/dextroamphetamine": "(dextro)amphetamine",
+  "human growth hormone": "HGH",
+  "hormone replacement therapy": "HRT",
+};
+
 const MAX_PLOTTED_WEIGHT_GAIN_KG = 10;
 
 function familyName(family) {
   return FAMILY_NAMES[family] || family || "unknown drug";
+}
+
+function compoundDisplayName(value) {
+  const text = String(value || "");
+  return COMPOUND_LABEL_OVERRIDES[text] || text;
 }
 
 function reportDrugLabel(report) {
@@ -799,8 +810,8 @@ function attributionText(counts) {
 }
 
 function reportMiniCard(report) {
-  const compounds = (report.compounds || []).join(", ");
-  const raw = (report.other_compounds_raw || []).join(", ");
+  const compounds = (report.compounds || []).map(compoundDisplayName).join(", ");
+  const raw = (report.other_compounds_raw || []).map(compoundDisplayName).join(", ");
   return `
     <article class="report-mini">
       <h3>${htmlEscape(report.created_iso || "unknown date")} · r/${htmlEscape(report.subreddit || "unknown")}</h3>
@@ -819,6 +830,10 @@ function reportMiniCard(report) {
           <div><dt>Notes</dt><dd>${htmlEscape(report.notes || "n/a")}</dd></div>
         </dl>
       </details>
+      <details class="source-text">
+        <summary>Full Reddit text</summary>
+        ${testimonialHtml(report.full_text || report.text_excerpt || "", "Full qualitative text")}
+      </details>
     </article>
   `;
 }
@@ -832,7 +847,7 @@ function renderNetworkLinkDetail(link, data, mode) {
   const reportIds = selectedReportIds(link, mode);
   const reports = reportIds.map((id) => data.reports[String(id)] || data.reports[id]).filter(Boolean);
   detail.innerHTML = `
-    <h2>${htmlEscape(link.source)} + ${htmlEscape(link.target)}</h2>
+    <h2>${htmlEscape(compoundDisplayName(link.source))} + ${htmlEscape(compoundDisplayName(link.target))}</h2>
     <dl class="detail-list">
       <div><dt>Reports</dt><dd>${reportIds.length}</dd></div>
       <div><dt>All-report count</dt><dd>${link.count}</dd></div>
@@ -849,7 +864,7 @@ function renderNetworkNodeDetail(node, data, mode) {
   const reportIds = selectedReportIds(node, mode);
   const reports = reportIds.map((id) => data.reports[String(id)] || data.reports[id]).filter(Boolean);
   detail.innerHTML = `
-    <h2>${htmlEscape(node.label)}</h2>
+    <h2>${htmlEscape(compoundDisplayName(node.label))}</h2>
     <dl class="detail-list">
       <div><dt>Family</dt><dd>${htmlEscape(familyName(node.family))}</dd></div>
       <div><dt>Reports</dt><dd>${reportIds.length}</dd></div>
@@ -917,140 +932,120 @@ function renderConcurrent(data, mode = "all") {
     svg.setAttribute("viewBox", "0 0 980 820");
     return;
   }
-  status.textContent = `${data.summary?.reports || 0} reports, ${nodes.length} compounds, ${links.length} connections shown (${mode === "stack" ? "stack-only" : "all concurrent mentions"}). Hover or focus an outer arc to show its compound name.`;
+  const limit = 24;
+  const visibleNodes = nodes.slice(0, limit);
+  const visibleIds = new Set(visibleNodes.map((node) => node.id));
+  const visibleLinks = links.filter((link) => visibleIds.has(link.source) && visibleIds.has(link.target));
+  status.textContent = `${data.summary?.reports || 0} reports, ${visibleNodes.length} of ${nodes.length} compounds shown, ${visibleLinks.length} pair connections in the matrix (${mode === "stack" ? "stack-only" : "all concurrent mentions"}). Darker squares indicate more reports; click a square to inspect the source posts.`;
+  const linkByPair = new Map();
+  visibleLinks.forEach((link) => {
+    linkByPair.set([link.source, link.target].sort().join("|||"), link);
+  });
 
-  const width = 980;
-  const height = 820;
-  const cx = width / 2;
-  const cy = height / 2;
-  const arcRadius = 295;
-  const ribbonRadius = 246;
-  const labelRadius = 365;
+  const cell = 24;
+  const left = 150;
+  const top = 150;
+  const width = left + visibleNodes.length * cell + 28;
+  const height = top + visibleNodes.length * cell + 48;
+  const maxLink = Math.max(...visibleLinks.map((link) => Number(link[countKey] || 0)), 1);
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  svg.appendChild(el("circle", { cx, cy, r: ribbonRadius - 24, class: "network-core" }));
+  const defs = el("defs");
+  const gradient = el("linearGradient", { id: "matrix-ramp-gradient", x1: "0%", y1: "0%", x2: "100%", y2: "0%" });
+  gradient.appendChild(el("stop", { offset: "0%", "stop-color": "#f4e7dc" }));
+  gradient.appendChild(el("stop", { offset: "55%", "stop-color": "#d0905e" }));
+  gradient.appendChild(el("stop", { offset: "100%", "stop-color": "#7b3518" }));
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
 
-  const nodeCounts = nodes.map((node) => Math.max(1, Number(node[countKey] || 0)));
-  const totalCount = nodeCounts.reduce((sum, value) => sum + value, 0);
-  const gap = nodes.length > 14 ? 0.032 : 0.048;
-  const usableAngle = Math.PI * 2 - gap * nodes.length;
-  const minSpan = Math.min(0.09, usableAngle / nodes.length * 0.35);
-  const weightedAngle = Math.max(0.1, usableAngle - minSpan * nodes.length);
-  let cursor = -Math.PI / 2;
-  const positions = new Map();
-  nodes.forEach((node, index) => {
-    const count = nodeCounts[index];
-    const span = minSpan + weightedAngle * (count / totalCount);
-    const startAngle = cursor + gap / 2;
-    const endAngle = cursor + span - gap / 2;
-    const angle = (startAngle + endAngle) / 2;
-    const ribbonPoint = polarPoint(cx, cy, ribbonRadius, angle);
-    positions.set(node.id, {
-      x: ribbonPoint.x,
-      y: ribbonPoint.y,
-      angle,
-      startAngle,
-      endAngle,
-      span,
-    });
-    cursor += span;
+  svg.appendChild(el("text", {
+    x: left,
+    y: 28,
+    class: "matrix-note",
+  }, "Darker cells indicate more Reddit reports mentioning both compounds."));
+
+  visibleNodes.forEach((node, index) => {
+    const y = top + index * cell + cell * 0.65;
+    const label = compoundDisplayName(node.label || node.id);
+    const rowLabel = el("text", {
+      x: left - 10,
+      y,
+      "text-anchor": "end",
+      class: "matrix-label matrix-row-label",
+      tabindex: 0,
+    }, label);
+    rowLabel.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
+    rowLabel.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
+    svg.appendChild(rowLabel);
+
+    const x = left + index * cell + cell * 0.4;
+    const columnLabel = el("text", {
+      x,
+      y: top - 12,
+      transform: `rotate(-58 ${x} ${top - 12})`,
+      "text-anchor": "start",
+      class: "matrix-label matrix-column-label",
+      tabindex: 0,
+    }, label);
+    columnLabel.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
+    columnLabel.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
+    svg.appendChild(columnLabel);
   });
 
-  const arcLayer = el("g", { class: "network-arcs" });
-  nodes.forEach((node) => {
-    const position = positions.get(node.id);
-    const count = Number(node[countKey] || 0);
-    const color = compoundColor(node.family);
-    const group = el("g", { class: "network-node-group" });
-    const arc = el("path", {
-      d: arcPath(cx, cy, arcRadius, position.startAngle, position.endAngle),
-      class: "network-arc",
-      style: `stroke:${color}`,
-      tabindex: 0,
-    });
-    arc.appendChild(el("title", {}, `${node.label}: ${count} reports`));
-    arc.addEventListener("click", () => renderNetworkNodeDetail(node, data, mode));
-    arc.addEventListener("mouseenter", () => renderNetworkNodeDetail(node, data, mode));
-    arc.addEventListener("focus", () => renderNetworkNodeDetail(node, data, mode));
-    group.appendChild(arc);
-
-    const step = tickStep(count);
-    const tickValues = new Set([0, count]);
-    if (count >= step * 2) {
-      for (let value = step; value < count; value += step) {
-        tickValues.add(value);
+  visibleNodes.forEach((row, yIndex) => {
+    visibleNodes.forEach((column, xIndex) => {
+      const x = left + xIndex * cell;
+      const y = top + yIndex * cell;
+      const pairKey = [row.id, column.id].sort().join("|||");
+      if (row.id === column.id) {
+        svg.appendChild(el("rect", { x, y, width: cell, height: cell, rx: 3, class: "matrix-diagonal" }));
+        return;
       }
-    }
-    [...tickValues].sort((a, b) => a - b).forEach((value) => {
-      const valueAngle = position.startAngle + (position.endAngle - position.startAngle) * (count ? value / count : 0);
-      const inner = polarPoint(cx, cy, arcRadius + 17, valueAngle);
-      const outer = polarPoint(cx, cy, arcRadius + (value === 0 || value === count ? 30 : 24), valueAngle);
-      group.appendChild(el("line", {
-        x1: inner.x.toFixed(2),
-        y1: inner.y.toFixed(2),
-        x2: outer.x.toFixed(2),
-        y2: outer.y.toFixed(2),
-        class: "network-tick",
-      }));
+      const link = linkByPair.get(pairKey);
+      if (!link) {
+        svg.appendChild(el("rect", { x, y, width: cell, height: cell, rx: 3, class: "matrix-empty" }));
+        return;
+      }
+      const count = Number(link[countKey] || 0);
+      const intensity = Math.sqrt(count / maxLink);
+      const cellNode = el("rect", {
+        x,
+        y,
+        width: cell,
+        height: cell,
+        rx: 3,
+        class: "matrix-cell",
+        "data-source": row.id,
+        "data-target": column.id,
+        fill: `rgba(151, 73, 31, ${(0.16 + intensity * 0.82).toFixed(3)})`,
+        tabindex: 0,
+      });
+      cellNode.appendChild(el("title", {}, `${compoundDisplayName(link.source)} + ${compoundDisplayName(link.target)}: ${count} reports`));
+      const activate = () => {
+        svg.querySelectorAll(".matrix-cell.selected").forEach((item) => item.classList.remove("selected"));
+        cellNode.classList.add("selected");
+        renderNetworkLinkDetail(link, data, mode);
+      };
+      cellNode.addEventListener("click", activate);
+      cellNode.addEventListener("focus", activate);
+      svg.appendChild(cellNode);
+
+      if (count >= Math.max(8, maxLink * 0.12)) {
+        svg.appendChild(el("text", {
+          x: x + cell / 2,
+          y: y + cell * 0.64,
+          class: "matrix-count",
+        }, count));
+      }
     });
-
-    const labelPosition = radialTextTransform(cx, cy, labelRadius + 10, position.angle);
-    group.appendChild(el("text", {
-      x: labelPosition.x.toFixed(2),
-      y: labelPosition.y.toFixed(2),
-      transform: labelPosition.transform,
-      "text-anchor": "middle",
-      class: "network-radial-label",
-    }, `${node.label} (${count})`));
-    arcLayer.appendChild(group);
   });
-  svg.appendChild(arcLayer);
 
-  const maxLink = Math.max(...links.map((link) => Number(link[countKey] || 0)));
-  const edgeLayer = el("g", { class: "network-edges" });
-  links
-    .slice()
-    .sort((a, b) => Number(a[countKey] || 0) - Number(b[countKey] || 0))
-    .forEach((link) => {
-    const source = positions.get(link.source);
-    const target = positions.get(link.target);
-    if (!source || !target) return;
-    const count = Number(link[countKey] || 0);
-    const sourceNode = nodes.find((node) => node.id === link.source);
-    const color = compoundColor(sourceNode?.family);
-    const path = el("path", {
-      d: `M${source.x.toFixed(2)},${source.y.toFixed(2)} C${cx.toFixed(2)},${cy.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} ${target.x.toFixed(2)},${target.y.toFixed(2)}`,
-      class: "network-edge",
-      style: `stroke:${color}`,
-      "stroke-width": (1.8 + Math.sqrt(count / maxLink) * 18).toFixed(2),
-      tabindex: 0,
-    });
-    path.appendChild(el("title", {}, `${link.source} + ${link.target}: ${count} reports`));
-    path.addEventListener("click", () => renderNetworkLinkDetail(link, data, mode));
-    path.addEventListener("mouseenter", () => renderNetworkLinkDetail(link, data, mode));
-    path.addEventListener("focus", () => renderNetworkLinkDetail(link, data, mode));
-    edgeLayer.appendChild(path);
-  });
-  svg.appendChild(edgeLayer);
+  const legendY = height - 24;
+  svg.appendChild(el("text", { x: left, y: legendY, class: "matrix-legend-label" }, "Few reports"));
+  svg.appendChild(el("rect", { x: left + 74, y: legendY - 10, width: 170, height: 10, rx: 5, class: "matrix-ramp" }));
+  svg.appendChild(el("text", { x: left + 258, y: legendY, class: "matrix-legend-label" }, "Many reports"));
 
-  const legendItems = [
-    ["reta", "Retatrutide"],
-    ["tirz", "Tirzepatide"],
-    ["sema", "Semaglutide"],
-    ["amylin", "Amylin"],
-    ["peptide", "Peptide"],
-    ["hormone", "Hormone"],
-    ["other_drug", "Other drug"],
-  ];
-  const legend = el("g", { class: "network-legend" });
-  legendItems.forEach(([family, label], index) => {
-    const y = 26 + index * 22;
-    legend.appendChild(el("rect", { x: 16, y: y - 7, width: 16, height: 10, rx: 2, class: networkFamilyClass(family), style: `fill:${compoundColor(family)}` }));
-    legend.appendChild(el("text", { x: 38, y: y + 4 }, label));
-  });
-  svg.appendChild(legend);
-
-  if (links[0]) renderNetworkLinkDetail(links[0], data, mode);
+  if (visibleLinks[0]) renderNetworkLinkDetail(visibleLinks[0], data, mode);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

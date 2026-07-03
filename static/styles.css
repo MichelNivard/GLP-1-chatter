@@ -1029,6 +1029,7 @@ dd {
 
 .network-area {
   min-height: 760px;
+  overflow: auto;
   padding: 0.75rem;
 }
 
@@ -1042,7 +1043,87 @@ dd {
 .compound-network {
   display: block;
   width: 100%;
+  min-width: 0;
   min-height: 740px;
+}
+
+.compound-matrix {
+  color-scheme: light;
+}
+
+.matrix-note,
+.matrix-label,
+.matrix-count,
+.matrix-legend-label {
+  font-family: Verdana, Geneva, sans-serif;
+  letter-spacing: 0;
+}
+
+.matrix-note {
+  fill: var(--muted);
+  font-size: 11.4px;
+  font-weight: 450;
+}
+
+.matrix-label {
+  cursor: pointer;
+  fill: var(--ink);
+  font-size: 9.8px;
+  font-weight: 400;
+}
+
+.matrix-label:hover,
+.matrix-label:focus {
+  fill: var(--green);
+  outline: none;
+  text-decoration: underline;
+}
+
+.matrix-count {
+  fill: #fffefa;
+  font-size: 9px;
+  font-weight: 650;
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+.matrix-empty,
+.matrix-diagonal,
+.matrix-cell {
+  stroke: #fffefa;
+  stroke-width: 1.25;
+}
+
+.matrix-empty {
+  fill: #efede4;
+}
+
+.matrix-diagonal {
+  fill: #dfdbce;
+}
+
+.matrix-cell {
+  cursor: pointer;
+}
+
+.matrix-cell:hover,
+.matrix-cell:focus,
+.matrix-cell.selected {
+  outline: none;
+  stroke: var(--ink);
+  stroke-width: 2.2;
+}
+
+.matrix-legend-label {
+  fill: var(--muted);
+  font-size: 10.5px;
+  font-weight: 450;
+}
+
+.matrix-ramp {
+  fill: url("#matrix-ramp-gradient");
+  stroke: var(--line);
+  stroke-width: 1;
 }
 
 .status {
@@ -1444,6 +1525,16 @@ dd {
 
 .report-mini p {
   margin-bottom: 0.65rem;
+}
+
+.report-mini details {
+  margin-top: 0.65rem;
+}
+
+.report-mini summary {
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .report-mini .testimonial,

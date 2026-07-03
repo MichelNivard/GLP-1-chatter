@@ -1860,8 +1860,8 @@ def render_concurrent_page(generated_at: str, summary: dict[str, Any]) -> str:
           </figure>
         </div>
         <p>In this archive the conversation is most visible in r/Retatrutide, with additional reports from r/Semaglutide, r/Mounjaro, and r/MounjaroMaintenance. It is a higher-risk corner of the GLP-1 world. Some users are taking approved medications. Others describe research peptides, gray-market supply chains, hormone manipulation, bodybuilding drugs, or compounds that are investigational or only recently moving through late-stage trials. The point of this view is not to endorse those combinations. It is to make the combinations legible.</p>
-        <p>The current network contains {report_count} reports with concurrent compounds, including {stack_report_count} reports the parser marked as stack-attribution cases. Use the buttons below to switch between all concurrent mentions and the stricter stack-only view. Click a compound on the outer ring, or click a connecting line between two compounds, and the panel on the right will show the contributing Reddit reports, the raw compound language, normalized compound names, excerpts, and links back to the source posts. The widget is meant to help readers move from a pattern in the network to the lived experience behind it.</p>
-        <p>In the widget below, click a compound name or a connection between two compounds to uncover specific Reddit user reports about the combined use of two, or many more, drugs at the same time.</p>
+        <p>The current network contains {report_count} reports with concurrent compounds, including {stack_report_count} reports the parser marked as stack-attribution cases. Use the buttons below to switch between all concurrent mentions and the stricter stack-only view. In the matrix, rows and columns are compounds, and darker squares indicate more reports mentioning that pair. Click a square and the panel on the right will show the contributing Reddit reports, the raw compound language, normalized compound names, excerpts, and links back to the source posts. The widget is meant to help readers move from a pattern in the matrix to the lived experience behind it.</p>
+        <p>In the widget below, click a square where two compounds meet to uncover specific Reddit user reports about the combined use of two, or many more, drugs at the same time.</p>
       </div>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
@@ -1871,12 +1871,12 @@ def render_concurrent_page(generated_at: str, summary: dict[str, Any]) -> str:
     </section>
     <section class="network-layout">
       <div class="network-area">
-        <div id="network-status" class="status">Loading network...</div>
-        <svg id="compound-network" class="compound-network" role="img" aria-label="Concurrent compound network"></svg>
+        <div id="network-status" class="status">Loading matrix...</div>
+        <svg id="compound-network" class="compound-network compound-matrix" role="img" aria-label="Concurrent compound co-occurrence matrix"></svg>
       </div>
       <aside id="network-detail" class="detail-panel network-detail" aria-live="polite">
         <h2>Connection detail</h2>
-        <p>Select an edge or compound to inspect contributing reports.</p>
+        <p>Select a matrix square to inspect contributing reports.</p>
       </aside>
     </section>
     <section class="table-section">
