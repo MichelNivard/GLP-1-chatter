@@ -355,13 +355,25 @@ function renderSideEffects(data) {
     return selectedEffect ? [selectedEffect] : [];
   }
 
+  function pairKey(source, target) {
+    return [source, target].sort().join("|||");
+  }
+
+  function linkForPair(source, target) {
+    const key = pairKey(source, target);
+    return (explorer.links || []).find((link) => pairKey(link.source, link.target) === key);
+  }
+
   function selectionLabel() {
     if (selectedPair) return `${selectedPair.source} + ${selectedPair.target}`;
     return selectedEffect || "side effects";
   }
 
   function activeReportIds() {
-    if (selectedPair) return selectedPair.report_ids || [];
+    if (selectedPair) {
+      const link = linkForPair(selectedPair.source, selectedPair.target);
+      return link?.report_ids || selectedPair.report_ids || [];
+    }
     const effect = effects.find((item) => item.phrase === selectedEffect);
     return effect?.report_ids || [];
   }
@@ -409,6 +421,22 @@ function renderSideEffects(data) {
       .sort((a, b) => b.active_count - a.active_count || b.count - a.count || a.phrase.localeCompare(b.phrase));
   }
 
+  function reportMatchesAnyEffectSeverity(report, effectNames) {
+    return selectedSeverity === "all" || effectNames.some((effect) => severityFor(report, effect) === selectedSeverity);
+  }
+
+  function filteredLinkReportIds(link) {
+    return (link.report_ids || []).filter((id) => {
+      const report = reportForId(id);
+      return report && reportMatchesAnyEffectSeverity(report, [link.source, link.target]);
+    });
+  }
+
+  function linkCountForCurrentSeverity(link) {
+    if (selectedSeverity === "all") return Number(link.count || 0);
+    return filteredLinkReportIds(link).length;
+  }
+
   function effectColor(index) {
     const palette = [
       "#8bbde8", "#efb189", "#8fcdb6", "#c8abe4", "#f2a5c5", "#cadb91",
@@ -418,9 +446,19 @@ function renderSideEffects(data) {
   }
 
   function graphEffects() {
-    const names = new Set();
-    effects.slice(0, graphEffectLimit).forEach((item) => names.add(item.phrase));
-    return effects.filter((item) => names.has(item.phrase));
+    const rows = frequencyEffects().slice(0, graphEffectLimit);
+    const selected = effects.find((item) => item.phrase === selectedEffect);
+    if (
+      selected &&
+      effectFrequencyCount(selected) > 0 &&
+      !rows.some((item) => item.phrase === selected.phrase)
+    ) {
+      rows.splice(Math.max(0, rows.length - 1), rows.length >= graphEffectLimit ? 1 : 0, {
+        ...selected,
+        active_count: effectFrequencyCount(selected),
+      });
+    }
+    return rows;
   }
 
   function renderBars() {
@@ -468,11 +506,20 @@ function renderSideEffects(data) {
     const nodeMap = new Map(nodes.map((item) => [item.phrase, item]));
     const visibleLinks = (explorer.links || [])
       .filter((link) => nodeMap.has(link.source) && nodeMap.has(link.target))
-      .sort((a, b) => Number(b.count || 0) - Number(a.count || 0));
-    const maxLink = Math.max(1, ...visibleLinks.map((link) => Number(link.count || 0)));
+      .map((link) => {
+        const reportIds = selectedSeverity === "all" ? (link.report_ids || []) : filteredLinkReportIds(link);
+        return {
+          ...link,
+          active_count: selectedSeverity === "all" ? Number(link.count || reportIds.length || 0) : reportIds.length,
+          active_report_ids: reportIds,
+        };
+      })
+      .filter((link) => link.active_count > 0)
+      .sort((a, b) => Number(b.active_count || 0) - Number(a.active_count || 0));
+    const maxLink = Math.max(1, ...visibleLinks.map((link) => Number(link.active_count || 0)));
     const linkByPair = new Map();
     visibleLinks.forEach((link) => {
-      linkByPair.set([link.source, link.target].sort().join("|||"), link);
+      linkByPair.set(pairKey(link.source, link.target), link);
     });
 
     const defs = el("defs");
@@ -504,7 +551,7 @@ function renderSideEffects(data) {
         class: `effect-matrix-label${selectedEffect === node.phrase && !selectedPair ? " active" : ""}`,
         tabindex: 0,
       }, label);
-      rowLabel.appendChild(el("title", {}, `${node.phrase}: ${node.count} reports`));
+      rowLabel.appendChild(el("title", {}, `${node.phrase}: ${node.active_count} reports`));
       rowLabel.addEventListener("click", () => {
         selectedEffect = node.phrase;
         selectedPair = null;
@@ -528,7 +575,7 @@ function renderSideEffects(data) {
         class: `effect-matrix-label${selectedEffect === node.phrase && !selectedPair ? " active" : ""}`,
         tabindex: 0,
       }, label);
-      columnLabel.appendChild(el("title", {}, `${node.phrase}: ${node.count} reports`));
+      columnLabel.appendChild(el("title", {}, `${node.phrase}: ${node.active_count} reports`));
       columnLabel.addEventListener("click", () => {
         selectedEffect = node.phrase;
         selectedPair = null;
@@ -558,7 +605,7 @@ function renderSideEffects(data) {
             class: `effect-matrix-diagonal${selectedEffect === row.phrase && !selectedPair ? " selected" : ""}`,
             tabindex: 0,
           });
-          rect.appendChild(el("title", {}, `${row.phrase}: ${row.count} reports`));
+          rect.appendChild(el("title", {}, `${row.phrase}: ${row.active_count} reports`));
           rect.addEventListener("click", () => {
             selectedEffect = row.phrase;
             selectedPair = null;
@@ -574,13 +621,13 @@ function renderSideEffects(data) {
           network.appendChild(rect);
           return;
         }
-        const link = linkByPair.get([row.phrase, column.phrase].sort().join("|||"));
+        const link = linkByPair.get(pairKey(row.phrase, column.phrase));
         if (!link) {
           network.appendChild(el("rect", { x, y, width: cell, height: cell, rx: 3, class: "effect-matrix-empty" }));
           return;
         }
         const active = selectedPair && selectedPair.source === link.source && selectedPair.target === link.target;
-        const count = Number(link.count || 0);
+        const count = Number(link.active_count || 0);
         const intensity = Math.sqrt(count / maxLink);
         const cellNode = el("rect", {
           x,
@@ -596,7 +643,7 @@ function renderSideEffects(data) {
         });
         cellNode.appendChild(el("title", {}, `${link.source} + ${link.target}: ${count} reports`));
         const selectPair = () => {
-          selectedPair = { source: link.source, target: link.target, report_ids: link.report_ids || [] };
+          selectedPair = { source: link.source, target: link.target };
           selectedEffect = link.source;
           visibleReports = 18;
           renderAll();
@@ -623,7 +670,9 @@ function renderSideEffects(data) {
 
   function renderDetailPanel(filteredReports) {
     if (selectedPair) {
-      const reportsWithPair = selectedPair.report_ids?.length || 0;
+      const link = linkForPair(selectedPair.source, selectedPair.target);
+      const reportsWithPair = link?.report_ids?.length || 0;
+      const visibleLabel = selectedSeverity === "all" ? "visible" : `${selectedSeverity} visible`;
       detail.innerHTML = `
         <div class="effect-summary-card">
           <div class="effect-summary-head">
@@ -632,7 +681,7 @@ function renderSideEffects(data) {
           </div>
           <div class="effect-summary-metrics" aria-label="Co-occurrence summary">
             <span><b>${reportsWithPair}</b> co-occurrence reports</span>
-            <span><b>${filteredReports.length}</b> visible</span>
+            <span><b>${filteredReports.length}</b> ${htmlEscape(visibleLabel)}</span>
             <span>${htmlEscape(selectedPair.source)}</span>
             <span>${htmlEscape(selectedPair.target)}</span>
           </div>
@@ -649,12 +698,14 @@ function renderSideEffects(data) {
     const counts = effect.severity_counts || {};
     const topPartners = (explorer.links || [])
       .filter((link) => link.source === selectedEffect || link.target === selectedEffect)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6)
       .map((link) => ({
         phrase: link.source === selectedEffect ? link.target : link.source,
-        count: link.count,
-      }));
+        count: linkCountForCurrentSeverity(link),
+      }))
+      .filter((partner) => partner.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+    const currentEffectCount = selectedSeverity === "all" ? Number(effect.count || 0) : Number(counts[selectedSeverity] || 0);
     const coMentionHtml = topPartners.length
       ? topPartners.map((partner) => `<span>${htmlEscape(partner.phrase)} <b>${partner.count}</b></span>`).join("")
       : "<span>none</span>";
@@ -665,7 +716,7 @@ function renderSideEffects(data) {
           <h2>${htmlEscape(selectedEffect)}</h2>
         </div>
         <div class="effect-summary-metrics" aria-label="Side-effect summary">
-          <span><b>${effect.count}</b> total</span>
+          <span><b>${currentEffectCount}</b> ${selectedSeverity === "all" ? "total" : htmlEscape(selectedSeverity)}</span>
           <span><b>${filteredReports.length}</b> visible</span>
           <span><b>${counts.mild || 0}</b> mild</span>
           <span><b>${counts.moderate || 0}</b> moderate</span>
@@ -751,7 +802,7 @@ function renderSideEffects(data) {
     }
     const filteredReports = selectedReports();
     const severityText = selectedSeverity === "all" ? "all severities" : `${selectedSeverity} labels`;
-    status.textContent = `${explorer.summary?.reports_with_side_effects || Object.keys(reports).length} reports with side-effect mentions, ${effects.length} normalized phrases; frequency shows ${severityText}.`;
+    status.textContent = `${explorer.summary?.reports_with_side_effects || Object.keys(reports).length} reports with side-effect mentions, ${effects.length} normalized phrases; frequency and co-occurrence show ${severityText}.`;
     renderBars();
     renderEffectNetwork();
     renderDetailPanel(filteredReports);
