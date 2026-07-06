@@ -10,12 +10,13 @@ on:
     types: [completed]
   schedule:
     - cron: "42 4 * * *"
+    - cron: "17 0,6,12,18 * * *"
   workflow_dispatch:
     inputs:
       limit:
         description: "Maximum posts/comments to parse"
         required: false
-        default: "300"
+        default: "500"
       retry_errors:
         description: "Retry rows previously marked error"
         required: false
@@ -43,6 +44,13 @@ concurrency:
   group: glp1-db-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  PARSE_CATCHUP_UNTIL_UTC: "2026-08-06T00:00:00Z"
+  PARSE_CATCHUP_CRON: "17 0,6,12,18 * * *"
+  PARSE_REGULAR_CRON: "42 4 * * *"
+  PARSE_CATCHUP_LIMIT: "500"
+  PARSE_REGULAR_LIMIT: "300"
+
 jobs:
   parse:
     if: ${{ github.event_name != 'push' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
@@ -56,20 +64,55 @@ jobs:
         run: python scripts/db_artifact.py unpack --if-present
       - name: Initialize database
         run: python scripts/init_db.py
+      - name: Choose parse settings
+        id: parse_settings
+        shell: bash
+        run: |
+          event_name="${{ github.event_name }}"
+          schedule="${{ github.event.schedule || '' }}"
+          parse_limit="${{ github.event.inputs.limit || '500' }}"
+          skip_parse="false"
+
+          now_epoch="$(date -u +%s)"
+          until_epoch="$(date -u -d "$PARSE_CATCHUP_UNTIL_UTC" +%s)"
+          catchup_active="false"
+          if [ "$now_epoch" -lt "$until_epoch" ]; then
+            catchup_active="true"
+          fi
+
+          if [ "$event_name" = "schedule" ] && [ "$schedule" = "$PARSE_CATCHUP_CRON" ]; then
+            if [ "$catchup_active" = "true" ]; then
+              parse_limit="$PARSE_CATCHUP_LIMIT"
+            else
+              skip_parse="true"
+            fi
+          elif [ "$event_name" = "schedule" ] && [ "$schedule" = "$PARSE_REGULAR_CRON" ]; then
+            if [ "$catchup_active" = "true" ]; then
+              skip_parse="true"
+            else
+              parse_limit="$PARSE_REGULAR_LIMIT"
+            fi
+          elif [ "$event_name" = "workflow_run" ]; then
+            if [ "$catchup_active" = "true" ]; then
+              skip_parse="true"
+            else
+              parse_limit="$PARSE_REGULAR_LIMIT"
+            fi
+          fi
+
+          echo "Catch-up active: $catchup_active"
+          echo "Skip parse: $skip_parse"
+          echo "Parse limit: $parse_limit"
+          echo "catchup_active=$catchup_active" >> "$GITHUB_OUTPUT"
+          echo "skip_parse=$skip_parse" >> "$GITHUB_OUTPUT"
+          echo "parse_limit=$parse_limit" >> "$GITHUB_OUTPUT"
       - name: Parse pending candidates one item per API call
+        if: ${{ steps.parse_settings.outputs.skip_parse != 'true' }}
         shell: bash
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          parse_limit="${{ github.event.inputs.limit || '300' }}"
-          event_name="${{ github.event_name }}"
-          source_workflow="${{ github.event.workflow_run.name || '' }}"
-          if [ "$event_name" = "schedule" ]; then
-            parse_limit="300"
-          fi
-          if [ "$event_name" = "workflow_run" ] && [ "$source_workflow" = "Backfill Reddit catalog" ]; then
-            parse_limit="300"
-          fi
+          parse_limit="${{ steps.parse_settings.outputs.parse_limit }}"
           args=(
             --limit "$parse_limit"
             --model gpt-5.4-nano

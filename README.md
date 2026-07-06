@@ -224,8 +224,8 @@ Side effects are extracted as lowercase phrases by the LLM, then normalized in c
 Workflows:
 
 - `.github/workflows/crawl.yml`: scheduled daily at 03:18 UTC and manual dispatch. Crawls recent candidates, default last 7 days, and commits DB changes.
-- `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-07-09T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
-- `.github/workflows/parse.yml`: runs after crawl, on schedule, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Parses one pending post/comment per API call and commits DB changes.
+- `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-08-06T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
+- `.github/workflows/parse.yml`: uses `OPENAI_API_KEY` from GitHub Secrets. During the catch-up window ending `2026-08-06T00:00:00Z`, scheduled parsing runs four times daily at `00:17`, `06:17`, `12:17`, and `18:17` UTC, with a 500 item cap. It parses exactly one pending post/comment per API call with `gpt-5.4-nano`; flagged large or long records can be rescreened with `gpt-5.4-mini`. Crawl/backfill completion events skip the expensive parse step while catch-up is active, then return to smaller 300 item batches afterward.
 - `.github/workflows/screen-side-effects.yml`: runs after parse, every 12 hours, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Screens one canonical extracted report per API call for side-effect severity and commits DB changes.
 - `.github/workflows/normalize-compounds.yml`: normalizes unresolved concurrent-compound strings one raw string per API call. It runs batches of 300 daily through `2026-07-17`, then only on Mondays, and commits `data/compound_normalizations.json` if changed.
 - `.github/workflows/pages.yml`: rebuilds the static site from SQLite and deploys to GitHub Pages.

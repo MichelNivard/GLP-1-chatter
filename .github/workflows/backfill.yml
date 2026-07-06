@@ -49,7 +49,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BACKFILL_UNTIL_UTC: "2026-07-09T00:00:00Z"
+  BACKFILL_UNTIL_UTC: "2026-08-06T00:00:00Z"
 
 jobs:
   backfill:
