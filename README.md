@@ -137,7 +137,7 @@ Use `--retry-errors` only when you intentionally want to retry rows previously m
 
 ## Rescreening
 
-After computational unit conversion, the parser fits a quadratic weight-change curve within each drug family using plottable canonical Reddit reports. The top 5 percent of reports by absolute residual from that family curve are queued for `gpt-5.4-mini` review, as long as they came from the nano pass and have not already been mini-rescreened.
+After computational unit conversion, the parser fits a quadratic weight-change curve within each drug family using plottable canonical Reddit reports. The fit is constrained to start at zero change in week zero, because the plotted quantity is change from baseline. The top 5 percent of reports by absolute residual from that family curve are queued for `gpt-5.4-mini` review, as long as they came from the nano pass and have not already been mini-rescreened.
 
 The rescreen prompt tells the mini model that the report is an outlier relative to the duration and weight-change pattern, then asks it to check whether the loss, gain, or duration is really attributable to the focal drug rather than prior GLP history, total journey, age, goal weight, dose, pregnancy/postpartum change, historical peak weight, or another confound. Each processed content hash gets at most one nano pass and one mini rescreen pass unless you explicitly retry errors.
 
@@ -179,7 +179,7 @@ Plotting rules:
 - weight loss is negative, so 10 kg lost plots as `-10`
 - reports with duration under 21 days are omitted
 - reports with `include_in_plots = false` are omitted
-- fitted curves are quadratic regressions fit to Reddit reports only, never RCT overlays
+- fitted curves are quadratic regressions constrained to start at zero change in week zero and fit to Reddit reports only, never RCT overlays
 
 ## Trial Overlay CSVs
 
@@ -220,8 +220,8 @@ Side effects are extracted as lowercase phrases by the LLM, then normalized in c
 Workflows:
 
 - `.github/workflows/crawl.yml`: scheduled daily at 03:18 UTC and manual dispatch. Crawls recent candidates, default last 7 days, and commits DB changes.
-- `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-08-06T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
-- `.github/workflows/parse.yml`: uses `OPENAI_API_KEY` from GitHub Secrets. During the catch-up window ending `2026-08-06T00:00:00Z`, scheduled parsing runs four times daily at `00:17`, `06:17`, `12:17`, and `18:17` UTC, with a 750 item cap. It parses exactly one pending post/comment per API call with `gpt-5.4-nano`; reports in the top 5 percent of residuals from the family-specific quadratic weight-change curve can be rescreened with `gpt-5.4-mini`. Crawl/backfill completion events skip the expensive parse step while catch-up is active, then return to smaller 300 item batches afterward.
+- `.github/workflows/backfill.yml`: temporary historical catch-up workflow scheduled every 12 hours until `2026-08-06T00:00:00Z`. It rotates across tirzepatide, semaglutide, and retatrutide source groups, rotates subreddit order within each group so later-listed sources such as r/Peptides move forward over time, resumes crawl checkpoints, and stops gracefully on rate limits or runtime caps.
+- `.github/workflows/parse.yml`: uses `OPENAI_API_KEY` from GitHub Secrets. During the catch-up window ending `2026-08-06T00:00:00Z`, scheduled parsing runs six times daily at `00:17`, `02:17`, `04:17`, `06:17`, `12:17`, and `18:17` UTC, with a 750 item cap. It parses exactly one pending post/comment per API call with `gpt-5.4-nano`; reports in the top 5 percent of residuals from the family-specific origin-constrained quadratic weight-change curve can be rescreened with `gpt-5.4-mini`. Crawl/backfill completion events skip the expensive parse step while catch-up is active, then return to smaller 300 item batches afterward.
 - `.github/workflows/screen-side-effects.yml`: runs after parse, every 12 hours, or manually. Uses `OPENAI_API_KEY` from GitHub Secrets. Screens one canonical extracted report per API call for side-effect severity and commits DB changes.
 - `.github/workflows/normalize-compounds.yml`: normalizes unresolved concurrent-compound strings one raw string per API call. It runs batches of 300 daily through `2026-07-17`, then only on Mondays, and commits `data/compound_normalizations.json` if changed.
 - `.github/workflows/pages.yml`: rebuilds the static site from SQLite and deploys to GitHub Pages.

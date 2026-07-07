@@ -10,7 +10,7 @@ on:
     types: [completed]
   schedule:
     - cron: "42 4 * * *"
-    - cron: "17 0,6,12,18 * * *"
+    - cron: "17 0,2,4,6,12,18 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -46,7 +46,7 @@ concurrency:
 
 env:
   PARSE_CATCHUP_UNTIL_UTC: "2026-08-06T00:00:00Z"
-  PARSE_CATCHUP_CRON: "17 0,6,12,18 * * *"
+  PARSE_CATCHUP_CRON: "17 0,2,4,6,12,18 * * *"
   PARSE_REGULAR_CRON: "42 4 * * *"
   PARSE_CATCHUP_LIMIT: "750"
   PARSE_REGULAR_LIMIT: "300"

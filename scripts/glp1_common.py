@@ -562,57 +562,26 @@ def finite_float(value: Any) -> float | None:
     return result if math.isfinite(result) else None
 
 
-def solve_3x3(matrix: list[list[float]], vector: list[float]) -> list[float] | None:
-    augmented = [row[:] + [rhs] for row, rhs in zip(matrix, vector, strict=True)]
-    for col in range(3):
-        pivot = max(range(col, 3), key=lambda row: abs(augmented[row][col]))
-        if abs(augmented[pivot][col]) < 1e-12:
-            return None
-        if pivot != col:
-            augmented[col], augmented[pivot] = augmented[pivot], augmented[col]
-        pivot_value = augmented[col][col]
-        for item in range(col, 4):
-            augmented[col][item] /= pivot_value
-        for row in range(3):
-            if row == col:
-                continue
-            factor = augmented[row][col]
-            for item in range(col, 4):
-                augmented[row][item] -= factor * augmented[col][item]
-    return [augmented[row][3] for row in range(3)]
-
-
 def quadratic_fit(pairs: list[tuple[float, float]]) -> dict[str, Any] | None:
     cleaned = [(x, y) for x, y in pairs if math.isfinite(x) and math.isfinite(y)]
-    if len(cleaned) < 3 or len({x for x, _ in cleaned}) < 3:
+    if len(cleaned) < 3 or len({x for x, _ in cleaned}) < 2:
         return None
-    xs = [x for x, _ in cleaned]
-    center = sum(xs) / len(xs)
-    scale = max(xs) - min(xs)
-    if scale <= 0:
+    s2 = sum(x * x for x, _ in cleaned)
+    s3 = sum(x * x * x for x, _ in cleaned)
+    s4 = sum(x * x * x * x for x, _ in cleaned)
+    t1 = sum(x * y for x, y in cleaned)
+    t2 = sum(x * x * y for x, y in cleaned)
+    determinant = s2 * s4 - s3 * s3
+    if abs(determinant) < 1e-12:
         return None
-    scaled = [((x - center) / scale, y) for x, y in cleaned]
-    s0 = float(len(scaled))
-    s1 = sum(z for z, _ in scaled)
-    s2 = sum(z * z for z, _ in scaled)
-    s3 = sum(z * z * z for z, _ in scaled)
-    s4 = sum(z * z * z * z for z, _ in scaled)
-    t0 = sum(y for _, y in scaled)
-    t1 = sum(z * y for z, y in scaled)
-    t2 = sum(z * z * y for z, y in scaled)
-    coefficients = solve_3x3(
-        [[s0, s1, s2], [s1, s2, s3], [s2, s3, s4]],
-        [t0, t1, t2],
-    )
-    if coefficients is None:
-        return None
-    return {"coefficients": coefficients, "center": center, "scale": scale}
+    linear = (t1 * s4 - t2 * s3) / determinant
+    quadratic = (s2 * t2 - s3 * t1) / determinant
+    return {"coefficients": [linear, quadratic], "origin_constrained": True}
 
 
 def quadratic_predict(fit: dict[str, Any], weeks: float) -> float:
-    intercept, linear, quadratic = fit["coefficients"]
-    z = (weeks - fit["center"]) / fit["scale"]
-    return intercept + linear * z + quadratic * z * z
+    linear, quadratic = fit["coefficients"]
+    return linear * weeks + quadratic * weeks * weeks
 
 
 def quadratic_regression_curve(points: list[dict[str, Any]], grid_max: int = 80) -> list[dict[str, float]]:
@@ -625,8 +594,8 @@ def quadratic_regression_curve(points: list[dict[str, Any]], grid_max: int = 80)
     fit = quadratic_fit(pairs)
     if fit is None:
         return []
-    min_x, max_x = pairs[0][0], pairs[-1][0]
-    if min_x == max_x:
+    max_x = pairs[-1][0]
+    if max_x <= 0:
         return []
     grid_n = min(grid_max, max(16, len(pairs) * 2))
     return [
@@ -635,7 +604,7 @@ def quadratic_regression_curve(points: list[dict[str, Any]], grid_max: int = 80)
             "weight_change_kg": round(quadratic_predict(fit, x), 4),
         }
         for i in range(grid_n)
-        for x in [min_x + (max_x - min_x) * i / (grid_n - 1)]
+        for x in [max_x * i / (grid_n - 1)]
     ]
 
 

@@ -114,6 +114,22 @@ jobs:
               ;;
           esac
 
+          IFS=',' read -ra subreddit_items <<< "$subreddits"
+          subreddit_count="${#subreddit_items[@]}"
+          if [ "$subreddit_count" -gt 1 ]; then
+            rotation_seed=$(( $(date -u +%s) / 43200 ))
+            rotation_offset=$(( rotation_seed % subreddit_count ))
+            rotated_subreddits=""
+            for ((i = 0; i < subreddit_count; i++)); do
+              index=$(( (rotation_offset + i) % subreddit_count ))
+              if [ -n "$rotated_subreddits" ]; then
+                rotated_subreddits+=","
+              fi
+              rotated_subreddits+="${subreddit_items[$index]}"
+            done
+            subreddits="$rotated_subreddits"
+          fi
+
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
           echo "subreddits=$subreddits" >> "$GITHUB_OUTPUT"
