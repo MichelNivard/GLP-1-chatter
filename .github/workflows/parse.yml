@@ -16,7 +16,7 @@ on:
       limit:
         description: "Maximum posts/comments to parse"
         required: false
-        default: "500"
+        default: "750"
       retry_errors:
         description: "Retry rows previously marked error"
         required: false
@@ -48,7 +48,7 @@ env:
   PARSE_CATCHUP_UNTIL_UTC: "2026-08-06T00:00:00Z"
   PARSE_CATCHUP_CRON: "17 0,6,12,18 * * *"
   PARSE_REGULAR_CRON: "42 4 * * *"
-  PARSE_CATCHUP_LIMIT: "500"
+  PARSE_CATCHUP_LIMIT: "750"
   PARSE_REGULAR_LIMIT: "300"
 
 jobs:
@@ -70,7 +70,7 @@ jobs:
         run: |
           event_name="${{ github.event_name }}"
           schedule="${{ github.event.schedule || '' }}"
-          parse_limit="${{ github.event.inputs.limit || '500' }}"
+          parse_limit="${{ github.event.inputs.limit || '750' }}"
           skip_parse="false"
 
           now_epoch="$(date -u +%s)"

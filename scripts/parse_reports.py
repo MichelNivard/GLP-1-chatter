@@ -23,7 +23,7 @@ from glp1_common import (
     delete_reports_for_post,
     ensure_schema,
     insert_extracted_reports,
-    report_needs_rescreen,
+    residual_outlier_post_ids,
     save_parse_cache,
     set_existing_reports_canonical,
     utc_now_iso,
@@ -34,8 +34,8 @@ DEFAULT_MODEL = "gpt-5.4-nano"
 DEFAULT_RESCREEN_MODEL = "gpt-5.4-mini"
 
 RESCREEN_WARNING = (
-    "This was flagged because the extracted weight loss or duration is large, "
-    "or because the extracted report shows notable weight gain. "
+    "This was flagged because its weight-change and duration combination is an outlier "
+    "relative to the quadratic Reddit weight-change curve for the focal drug family. "
     "Carefully check whether the loss/gain/duration is truly attributable to the focal drug, "
     "or whether it belongs to prior Tirz/Sema/Ozempic/Wegovy/Mounjaro/Zepbound history, "
     "total GLP journey, pregnancy/postpartum weight change, historical peak weight, age, "
@@ -189,8 +189,8 @@ def parse_args() -> argparse.Namespace:
         "--queue-rescreen-flags",
         action="store_true",
         help=(
-            "Before parsing, mark already-parsed nano-only rows whose canonical reports meet "
-            "the current rescreen thresholds as pending for one mini-model rescreen."
+            "Before parsing, mark already-parsed nano-only rows in the top 5 percent of "
+            "quadratic-curve residuals as pending for one mini-model rescreen."
         ),
     )
     parser.add_argument(
@@ -412,30 +412,29 @@ def select_rows(
 def queue_rescreen_flags(conn: sqlite3.Connection, dry_run: bool) -> int:
     rows = conn.execute(
         """
-        SELECT DISTINCT p.post_id
+        SELECT
+          p.post_id,
+          p.rescreen_status,
+          r.report_id,
+          r.drug_family,
+          r.duration_days,
+          r.duration_weeks,
+          r.weight_change_kg,
+          r.source_pass
         FROM raw_posts p
         JOIN extracted_reports r ON r.post_id = p.post_id
         WHERE p.parse_status = 'parsed'
-          AND p.rescreen_status = 'not_needed'
           AND r.canonical = 1
-          AND r.source_pass = 'nano'
-        ORDER BY p.post_id
+          AND r.include_in_plots = 1
+          AND r.duration_days >= 21
+          AND r.duration_weeks IS NOT NULL
+          AND r.weight_change_kg IS NOT NULL
+          AND r.drug_family IN ('reta', 'tirz', 'sema')
+        ORDER BY r.drug_family, r.report_id
         """
     ).fetchall()
-    flagged_post_ids: list[int] = []
-    for row in rows:
-        reports = conn.execute(
-            """
-            SELECT weight_lost_kg, duration_days, weight_change_kg
-            FROM extracted_reports
-            WHERE post_id = ?
-              AND canonical = 1
-              AND source_pass = 'nano'
-            """,
-            (row["post_id"],),
-        ).fetchall()
-        if any(report_needs_rescreen(dict(report)) for report in reports):
-            flagged_post_ids.append(int(row["post_id"]))
+    outliers = residual_outlier_post_ids([dict(row) for row in rows])
+    flagged_post_ids = outliers["post_ids"]
 
     if flagged_post_ids and not dry_run:
         conn.executemany(
@@ -447,6 +446,8 @@ def queue_rescreen_flags(conn: sqlite3.Connection, dry_run: bool) -> int:
         json.dumps(
             {
                 "queue_rescreen_flags": len(flagged_post_ids),
+                "rule": "quadratic_residual_top_5_percent",
+                "diagnostics": outliers["diagnostics"],
                 "dry_run": dry_run,
             },
             sort_keys=True,
@@ -691,15 +692,9 @@ def process_row(conn: sqlite3.Connection, row: sqlite3.Row, args: argparse.Names
             canonical=True,
         )
         mark_parsed(conn, post_id, args.model)
-        converted = converted_result(nano_result)
-        needs_rescreen = any(report_needs_rescreen(report) for report in converted.get("reports", []))
-        if not needs_rescreen:
-            mark_rescreen(conn, post_id, status="not_needed")
-            conn.commit()
-            return {"post_id": post_id, "status": "parsed", "source": nano_source, "rescreen": "not_needed"}
-
-        mark_rescreen(conn, post_id, status="pending")
+        mark_rescreen(conn, post_id, status="not_needed")
         conn.commit()
+        return {"post_id": post_id, "status": "parsed", "source": nano_source, "rescreen": "not_needed"}
 
     rescreen_prompt = load_prompt(rescreen=True)
     rescreen_result, rescreen_error, rescreen_source = run_pass(
@@ -752,8 +747,6 @@ def main() -> int:
     args = parse_args()
     conn = connect_db(args.db)
     ensure_schema(conn)
-    if args.queue_rescreen_flags:
-        queue_rescreen_flags(conn, args.dry_run)
     if args.queue_weight_gain_rescreens:
         queued_gain_rows = queue_weight_gain_rescreens(
             conn,
@@ -763,17 +756,36 @@ def main() -> int:
         args.rescreen_only = True
         if queued_gain_rows and not args.dry_run:
             args.force_rescreen_cache = True
+    queue_residuals = not args.rescreen_only and not args.queue_weight_gain_rescreens
+    queued_before = 0
+    queued_after = 0
+    if args.queue_rescreen_flags or queue_residuals:
+        queued_before = queue_rescreen_flags(conn, args.dry_run)
     rows = select_rows(conn, args.limit, args.retry_errors, rescreen_only=args.rescreen_only)
     if not rows:
         print("no pending rows")
+        conn.close()
         return 0
     results = []
     try:
         for row in rows:
             results.append(process_row(conn, row, args))
+        if queue_residuals:
+            queued_after = queue_rescreen_flags(conn, args.dry_run)
     finally:
         conn.close()
-    print(json.dumps({"processed": len(results), "results": results}, ensure_ascii=False, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "processed": len(results),
+                "queued_residual_rescreens_before": queued_before,
+                "queued_residual_rescreens_after": queued_after,
+                "results": results,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 

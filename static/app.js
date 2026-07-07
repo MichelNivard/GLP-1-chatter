@@ -293,7 +293,7 @@ function renderScatter(data) {
   legend.appendChild(el("circle", { cx: width - 288, cy: 18, r: 4.7, class: `point point-${data.family}` }));
   legend.appendChild(el("text", { x: width - 275, y: 22 }, "Reddit reports"));
   legend.appendChild(el("line", { x1: width - 288, x2: width - 262, y1: 39, y2: 39, class: "fit-line" }));
-  legend.appendChild(el("text", { x: width - 253, y: 43 }, "Reddit smoothed fit"));
+  legend.appendChild(el("text", { x: width - 253, y: 43 }, "Reddit quadratic fit"));
   rctSeries.forEach((series, index) => {
     const rows = series.rows || [];
     if (rows.length < 2) return;

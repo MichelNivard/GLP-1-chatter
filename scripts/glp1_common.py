@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -17,6 +18,8 @@ PROMPT_VERSION = "2026-07-02-v2"
 
 DRUG_FAMILIES = ("reta", "tirz", "sema")
 ALL_DRUG_FAMILIES = ("reta", "tirz", "sema", "other", "unclear")
+RESIDUAL_RESCREEN_FRACTION = 0.05
+MIN_RESIDUAL_FIT_POINTS = 20
 
 DB_SCHEMA = """
 PRAGMA journal_mode = DELETE;
@@ -551,21 +554,145 @@ def compute_converted_report(report: dict[str, Any]) -> dict[str, Any]:
     return converted
 
 
-RESCREEN_WEIGHT_LOSS_KG = 25.0
-RESCREEN_WEIGHT_GAIN_KG = 5.0
-RESCREEN_DURATION_DAYS = 365.0
+def finite_float(value: Any) -> float | None:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
 
 
-def report_needs_rescreen(converted: dict[str, Any]) -> bool:
-    lost_kg = converted.get("weight_lost_kg")
-    weight_change_kg = converted.get("weight_change_kg")
-    duration_days = converted.get("duration_days")
-    gain_kg = weight_change_kg if weight_change_kg is not None else (-lost_kg if lost_kg is not None else None)
-    return (
-        (lost_kg is not None and lost_kg > RESCREEN_WEIGHT_LOSS_KG)
-        or (gain_kg is not None and gain_kg > RESCREEN_WEIGHT_GAIN_KG)
-        or (duration_days is not None and duration_days > RESCREEN_DURATION_DAYS)
+def solve_3x3(matrix: list[list[float]], vector: list[float]) -> list[float] | None:
+    augmented = [row[:] + [rhs] for row, rhs in zip(matrix, vector, strict=True)]
+    for col in range(3):
+        pivot = max(range(col, 3), key=lambda row: abs(augmented[row][col]))
+        if abs(augmented[pivot][col]) < 1e-12:
+            return None
+        if pivot != col:
+            augmented[col], augmented[pivot] = augmented[pivot], augmented[col]
+        pivot_value = augmented[col][col]
+        for item in range(col, 4):
+            augmented[col][item] /= pivot_value
+        for row in range(3):
+            if row == col:
+                continue
+            factor = augmented[row][col]
+            for item in range(col, 4):
+                augmented[row][item] -= factor * augmented[col][item]
+    return [augmented[row][3] for row in range(3)]
+
+
+def quadratic_fit(pairs: list[tuple[float, float]]) -> dict[str, Any] | None:
+    cleaned = [(x, y) for x, y in pairs if math.isfinite(x) and math.isfinite(y)]
+    if len(cleaned) < 3 or len({x for x, _ in cleaned}) < 3:
+        return None
+    xs = [x for x, _ in cleaned]
+    center = sum(xs) / len(xs)
+    scale = max(xs) - min(xs)
+    if scale <= 0:
+        return None
+    scaled = [((x - center) / scale, y) for x, y in cleaned]
+    s0 = float(len(scaled))
+    s1 = sum(z for z, _ in scaled)
+    s2 = sum(z * z for z, _ in scaled)
+    s3 = sum(z * z * z for z, _ in scaled)
+    s4 = sum(z * z * z * z for z, _ in scaled)
+    t0 = sum(y for _, y in scaled)
+    t1 = sum(z * y for z, y in scaled)
+    t2 = sum(z * z * y for z, y in scaled)
+    coefficients = solve_3x3(
+        [[s0, s1, s2], [s1, s2, s3], [s2, s3, s4]],
+        [t0, t1, t2],
     )
+    if coefficients is None:
+        return None
+    return {"coefficients": coefficients, "center": center, "scale": scale}
+
+
+def quadratic_predict(fit: dict[str, Any], weeks: float) -> float:
+    intercept, linear, quadratic = fit["coefficients"]
+    z = (weeks - fit["center"]) / fit["scale"]
+    return intercept + linear * z + quadratic * z * z
+
+
+def quadratic_regression_curve(points: list[dict[str, Any]], grid_max: int = 80) -> list[dict[str, float]]:
+    pairs = sorted(
+        (duration, change)
+        for point in points
+        if (duration := finite_float(point.get("duration_weeks"))) is not None
+        and (change := finite_float(point.get("weight_change_kg"))) is not None
+    )
+    fit = quadratic_fit(pairs)
+    if fit is None:
+        return []
+    min_x, max_x = pairs[0][0], pairs[-1][0]
+    if min_x == max_x:
+        return []
+    grid_n = min(grid_max, max(16, len(pairs) * 2))
+    return [
+        {
+            "weeks": round(x, 4),
+            "weight_change_kg": round(quadratic_predict(fit, x), 4),
+        }
+        for i in range(grid_n)
+        for x in [min_x + (max_x - min_x) * i / (grid_n - 1)]
+    ]
+
+
+def residual_outlier_post_ids(
+    rows: list[dict[str, Any]],
+    *,
+    fraction: float = RESIDUAL_RESCREEN_FRACTION,
+    min_points: int = MIN_RESIDUAL_FIT_POINTS,
+) -> dict[str, Any]:
+    by_family: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        family = str(row.get("drug_family") or "")
+        duration = finite_float(row.get("duration_weeks"))
+        change = finite_float(row.get("weight_change_kg"))
+        if family not in DRUG_FAMILIES or duration is None or change is None:
+            continue
+        by_family.setdefault(family, []).append({**row, "duration_weeks": duration, "weight_change_kg": change})
+
+    flagged_post_ids: set[int] = set()
+    diagnostics: dict[str, dict[str, Any]] = {}
+    for family, family_rows in by_family.items():
+        pairs = [(row["duration_weeks"], row["weight_change_kg"]) for row in family_rows]
+        fit = quadratic_fit(pairs)
+        if fit is None or len(family_rows) < min_points:
+            diagnostics[family] = {"eligible_reports": len(family_rows), "flagged_posts": 0, "threshold_abs_residual": None}
+            continue
+        residual_rows = []
+        for row in family_rows:
+            expected = quadratic_predict(fit, row["duration_weeks"])
+            residual = row["weight_change_kg"] - expected
+            residual_rows.append(
+                {
+                    **row,
+                    "expected_weight_change_kg": expected,
+                    "residual_kg": residual,
+                    "abs_residual_kg": abs(residual),
+                }
+            )
+        residual_rows.sort(key=lambda item: (-item["abs_residual_kg"], int(item.get("report_id") or 0)))
+        flag_count = max(1, math.ceil(len(residual_rows) * fraction))
+        top_rows = residual_rows[:flag_count]
+        threshold = top_rows[-1]["abs_residual_kg"] if top_rows else None
+        candidate_post_ids = {
+            int(row["post_id"])
+            for row in top_rows
+            if row.get("post_id") is not None
+            and row.get("source_pass") == "nano"
+            and row.get("rescreen_status") == "not_needed"
+        }
+        flagged_post_ids.update(candidate_post_ids)
+        diagnostics[family] = {
+            "eligible_reports": len(family_rows),
+            "outlier_reports": flag_count,
+            "flagged_posts": len(candidate_post_ids),
+            "threshold_abs_residual": round(threshold, 4) if threshold is not None else None,
+        }
+    return {"post_ids": sorted(flagged_post_ids), "diagnostics": diagnostics}
 
 
 def converted_result(result: dict[str, Any]) -> dict[str, Any]:

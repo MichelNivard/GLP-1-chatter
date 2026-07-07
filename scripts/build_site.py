@@ -24,6 +24,7 @@ from glp1_common import (
     connect_db,
     ensure_schema,
     load_side_effect_normalization,
+    quadratic_regression_curve,
     read_json,
     row_json,
     utc_now_iso,
@@ -902,34 +903,6 @@ def is_plottable(row: Any) -> bool:
     )
 
 
-def smoothed_curve(points: list[dict[str, Any]]) -> list[dict[str, float]]:
-    pairs = sorted(
-        (float(point["duration_weeks"]), float(point["weight_change_kg"]))
-        for point in points
-        if point.get("duration_weeks") is not None and point.get("weight_change_kg") is not None
-    )
-    n = len(pairs)
-    if n < 3:
-        return []
-    min_x, max_x = pairs[0][0], pairs[-1][0]
-    if min_x == max_x:
-        return []
-    grid_n = min(60, max(12, n * 2))
-    window = min(n, max(5, math.ceil(n * 0.35)))
-    raw_curve: list[tuple[float, float]] = []
-    for i in range(grid_n):
-        x = min_x + (max_x - min_x) * i / (grid_n - 1)
-        nearest = sorted(pairs, key=lambda pair: abs(pair[0] - x))[:window]
-        y = statistics.median([pair[1] for pair in nearest])
-        raw_curve.append((x, float(y)))
-    smoothed: list[dict[str, float]] = []
-    for i, (x, y) in enumerate(raw_curve):
-        neighbors = raw_curve[max(0, i - 1) : min(len(raw_curve), i + 2)]
-        y_smooth = sum(pair[1] for pair in neighbors) / len(neighbors)
-        smoothed.append({"weeks": round(x, 4), "weight_change_kg": round(y_smooth, 4)})
-    return smoothed
-
-
 def parse_primary_dose_mg(label: str) -> float | None:
     match = DOSE_MG_RE.search(label)
     if not match:
@@ -1637,7 +1610,7 @@ def render_weight_choice_page(summary: dict[str, Any], generated_at: str) -> str
       <h1>Choose a drug family.</h1>
       <div class="page-copy">
         <p>This site turns a messy Reddit archive into a cautious set of weight-change plots. The crawler searches selected GLP-1 communities for configured terms: retatrutide, reta, and retaglutide; tirzepatide, tirz, Mounjaro, and Zepbound; semaglutide, sema, Ozempic, Wegovy, and Rybelsus. During the current historical catch-up period, a backfill workflow runs every 12 hours; regular scheduled crawls keep checking recent material.</p>
-        <p>Each candidate post or comment is stored with its original text and URL, then read once by gpt-5.4-nano as a single-item extraction. The prompt asks for Reddit abbreviations such as SW and CW, tries not to mistake GW for current weight, and leaves unit conversion to code. On the drug pages, weight loss is plotted as negative kilograms, and points with large losses, gains over 5 kg, or very long durations are reread by gpt-5.4-mini before they become canonical.</p>
+        <p>Each candidate post or comment is stored with its original text and URL, then read once by gpt-5.4-nano as a single-item extraction. The prompt asks for Reddit abbreviations such as SW and CW, tries not to mistake GW for current weight, and leaves unit conversion to code. On the drug pages, weight loss is plotted as negative kilograms, the fitted Reddit curve is now a quadratic regression, and the most unusual 5 percent of plot residuals are reread by gpt-5.4-mini before they become canonical.</p>
       </div>
       <p class="meta">Generated {html.escape(generated_at)}</p>
     </section>
@@ -1701,14 +1674,14 @@ def render_methods_page(generated_at: str, data_status: dict[str, Any]) -> str:
       <p>Each post or comment is then read one at a time. The language model is not asked to summarize a batch or infer a population trend. It receives a single Reddit item and returns structured fields: the drug family, the drug name mentioned, dose narrative, duration, starting and current weight, reported loss, side effects, attribution, confidence, and a short evidence note. The system marks processed post IDs so routine changes in database metadata do not trigger unnecessary rereading.</p>
       <p>The extraction prompt is deliberately suspicious. Reddit shorthand can be treacherous: SW means starting weight, CW means current weight, and GW usually means goal weight, not weight lost. A milligram dose is not body weight. Age is not duration. A pregnancy high weight, a prior Ozempic run, a switch from semaglutide to retatrutide, or a whole lifetime GLP-1 journey should not be credited to the focal drug unless the post clearly says so.</p>
       <p>The model extracts raw values and units; code does the arithmetic. Pounds and stone are converted to kilograms, durations are converted to days and weeks, and missing values are filled in only when the relationship is clear. Goal weight is never treated as current weight. Weight loss is plotted as negative weight change, so losing 10 kg appears as -10 kg. The display caps visible weight gain at +10 kg so a likely misread or exceptional outlier does not stretch the whole chart.</p>
-      <p>Some records get a second read. Reports with weight loss over 25 kg, weight gain over 5 kg, or duration over 365 days are sent through a stronger rescreening step before they become canonical. Side effects are extracted as short phrases, normalized with an explicit mapping, and screened into mild, moderate, or severe reader-facing labels. Those labels are not clinical adverse-event grades; they are a browsing aid for lived reports.</p>
+      <p>Some records get a second read. After code converts duration and weight values, the parser fits a quadratic weight-change curve within each drug family. The top 5 percent of plottable nano reports by absolute residual from that curve are sent through a stronger rescreening step before they become canonical. Side effects are extracted as short phrases, normalized with an explicit mapping, and screened into mild, moderate, or severe reader-facing labels. Those labels are not clinical adverse-event grades; they are a browsing aid for lived reports.</p>
       <p>The language model can still be wrong. It can miss jokes, sarcasm, bravado, deleted context, or a throwaway line that changes the meaning of a post. Long Reddit narratives are especially difficult when they describe several drugs, several starts and stops, pregnancy weight, regained weight, a prior GLP-1 history, a switch, a stack, and more than one bout of loss or gain. The model may infer a duration that was never stated, attach an old weight change to the wrong drug, mistake a goal or highest weight for a current weight, or treat a frightened question as a clean report. This is why the widgets are built to point back to the original Reddit text: the extraction is an index into the story, not a substitute for reading it.</p>
       <p>The biases are obvious and large. Reddit users are not representative of all patients. Enthusiastic people may be more likely to post. People having frightening symptoms may also be more likely to post. People doing well under ordinary medical care may never appear. People without internet access, English fluency, leisure time, or comfort discussing weight and medication in public are underrepresented. Some posts may be exaggerated, mistaken, duplicated, sarcastic, or incomplete.</p>
       <p>There are also platform and market distortions. These communities attract curiosity, desperation, brand loyalty, anti-brand resentment, peptide vendors, gray-market sales pitches, bots, trolls, and people with financial or ideological reasons to make a drug look better or worse than it is. Moderation policies differ by subreddit. Search terms miss some relevant reports and capture some irrelevant ones. Deleted posts, edited posts, Reddit access limits, and crawler blind spots all shape what enters the archive.</p>
       <p>For those reasons, the charts should be read as maps of reported experience, not estimates of treatment effect. Optional clinical-trial overlays, when present, are external aggregate comparison data and are never used to fit the Reddit curve. GLP-1 Chatter is most useful when a reader moves between the aggregate view and the underlying stories: from dot to post, from side-effect phrase to full account, from apparent pattern back to the messy social world that produced it.</p>
       <h2>Technical Process Flow</h2>
       <p>The live pipeline is spread across six GitHub Actions workflows, or seven GitHub Actions jobs if the separate Pages build and deploy jobs are counted separately. Times below are in UTC. The Reddit crawler runs daily at 03:18 and searches recent posts and comments, usually over the last seven days. A temporary historical backfill runs at 00:17 and 12:17 until August 6, 2026, rotating across tirzepatide, semaglutide, and retatrutide source groups. Neither crawl step uses a language model. They only find candidate Reddit items, store raw text in SQLite, and commit the packed database artifact.</p>
-      <p>The parse workflow is the first LLM-bearing stage. During the July-August 2026 catch-up window, it runs at 00:17, 06:17, 12:17, and 18:17 UTC with a cap of 500 pending posts or comments per run. To keep OpenAI spending predictable, crawl and backfill completion events do not run the expensive parse step while that catch-up schedule is active. After the catch-up window, the regular daily parse at 04:42 UTC and crawl-triggered parse runs use smaller 300-item batches. Each parse call sends exactly one Reddit post or comment to gpt-5.4-nano and writes structured drug reports to the database. Suspicious records, such as very large losses, large gains, or very long durations, can be rescreened one item at a time with gpt-5.4-mini before becoming canonical. This stage fills the main fields used by the weight-change plots: drug family, named drug, dose narrative, duration, raw weight values, computed kg/week values, attribution, side effects, evidence, confidence, and notes.</p>
+      <p>The parse workflow is the first LLM-bearing stage. During the July-August 2026 catch-up window, it runs at 00:17, 06:17, 12:17, and 18:17 UTC with a cap of 750 pending posts or comments per run. To keep OpenAI spending predictable, crawl and backfill completion events do not run the expensive parse step while that catch-up schedule is active. After the catch-up window, the regular daily parse at 04:42 UTC and crawl-triggered parse runs use smaller 300-item batches. Each parse call sends exactly one Reddit post or comment to gpt-5.4-nano and writes structured drug reports to the database. The most unusual 5 percent of plottable nano reports by residual from the family-specific quadratic weight-change curve can be rescreened one item at a time with gpt-5.4-mini before becoming canonical. This stage fills the main fields used by the weight-change plots: drug family, named drug, dose narrative, duration, raw weight values, computed kg/week values, attribution, side effects, evidence, confidence, and notes.</p>
       <p>The side-effect severity workflow runs at 05:17 and 17:17, and also after successful parse runs. This is the second LLM-bearing stage. It sends one canonical extracted report at a time to gpt-5.4-nano and labels each normalized side-effect phrase as mild, moderate, or severe. The labels are written to side-effect screening tables and are used by the side-effect frequency view, co-occurrence matrix, severity controls, and report browser.</p>
       <p>The compound-normalization workflow runs at 06:33. During the initial cleanup period it runs daily through July 17, 2026, then only on Mondays. This is the third LLM-bearing stage, but only for unresolved compound strings. The script first applies explicit aliases in code. If a raw compound phrase is still unresolved, it sends that one phrase to gpt-5.4-nano, then applies the alias map again so shorthand or rough nano outputs are collapsed to canonical names such as tirzepatide, retatrutide, semaglutide, human growth hormone, or insulin. The result is cached in data/compound_normalizations.json and feeds the stacking/polypharmacy matrix.</p>
       <p>The Pages workflow has no LLM calls. It runs after successful parse, side-effect severity, or compound-normalization workflows, and also after relevant pushes to the site code or data artifacts. Its build job unpacks the database and runs the static site builder. Its deploy job publishes the generated HTML, JSON, JavaScript, images, and CSS to GitHub Pages. At runtime, the website has no backend; the browser only reads the static files produced by this build.</p>
@@ -1893,9 +1866,10 @@ def render_scatter_page(family: str, generated_at: str, has_rct: bool) -> str:
                 "kilograms, so a 10 kg loss appears as -10 kg. Hover or click a point to see "
                 "the original text, Reddit URL, extracted fields, confidence, evidence, and "
                 "notes. To keep obvious high-gain outliers from stretching the figure, the "
-                "displayed plot is capped at +10 kg of weight gain. Large losses, gains over "
-                "5 kg, and very long durations are sent through gpt-5.4-mini for a second read "
-                "before the canonical extraction is shown."
+                "displayed plot is capped at +10 kg of weight gain. The fitted Reddit line is "
+                "a quadratic regression, and the most unusual 5 percent of plottable nano "
+                "reports by residual from that curve are sent through gpt-5.4-mini for a "
+                "second read before the canonical extraction is shown."
             ),
             rct_context,
         ]
@@ -2076,7 +2050,7 @@ def build_site(db_path: Path, site_dir: Path, dry_run: bool = False) -> dict[str
             "family": family,
             "family_name": FAMILY_NAMES[family],
             "points": points,
-            "curve": smoothed_curve(points),
+            "curve": quadratic_regression_curve(points),
             "side_effects": effects,
             "side_effect_explorer": side_effect_explorer_payload(rows, mapping, side_effect_screenings),
             "side_effect_normalization": mapping,
